@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="description" content="" />
+		<link rel="icon" href="./favicon.png" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<!-- Material Icons -->
+		<link
+		  rel="stylesheet"
+		  href="https://fonts.googleapis.com/icon?family=Material+Icons"
+		/>
+		<!-- Roboto -->
+		<link
+		  rel="stylesheet"
+		  href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,600,700"
+		/>
+		<!-- Roboto Mono -->
+		<link
+		  rel="stylesheet"
+		  href="https://fonts.googleapis.com/css?family=Roboto+Mono"
+		/>
+		<meta http-equiv="content-security-policy" content=""><!-- HTML_TAG_START --><style>pre code.hljs{display:block;overflow-x:auto;padding:1em}code.hljs{padding:3px 5px}/*!
+  Theme: a11y-light
+  Author: @ericwbailey
+  Maintainer: @ericwbailey
+
+  Based on the Tomorrow Night Eighties theme: https://github.com/isagalaev/highlight.js/blob/master/src/styles/tomorrow-night-eighties.css
+*/.hljs{background:#fefefe;color:#545454}.hljs-comment,.hljs-quote{color:#696969}.hljs-deletion,.hljs-name,.hljs-regexp,.hljs-selector-class,.hljs-selector-id,.hljs-tag,.hljs-template-variable,.hljs-variable{color:#d91e18}.hljs-attribute,.hljs-built_in,.hljs-link,.hljs-literal,.hljs-meta,.hljs-number,.hljs-params,.hljs-type{color:#aa5d00}.hljs-addition,.hljs-bullet,.hljs-string,.hljs-symbol{color:green}.hljs-section,.hljs-title{color:#007faa}.hljs-keyword,.hljs-selector-tag{color:#7928a1}.hljs-emphasis{font-style:italic}.hljs-strong{font-weight:700}@media screen and (-ms-high-contrast:active){.hljs-addition,.hljs-attribute,.hljs-built_in,.hljs-bullet,.hljs-comment,.hljs-link,.hljs-literal,.hljs-meta,.hljs-number,.hljs-params,.hljs-quote,.hljs-string,.hljs-symbol,.hljs-type{color:highlight}.hljs-keyword,.hljs-selector-tag{font-weight:700}}</style><!-- HTML_TAG_END --><link rel="stylesheet" href="/smui.css" media="(prefers-color-scheme: light)" data-svelte="svelte-f9ryvf">
+		<link rel="stylesheet" href="/smui-dark.css" media="screen and (prefers-color-scheme: dark)" data-svelte="svelte-f9ryvf">
+	<link rel="stylesheet" href="/_app/assets/vendor-47c9022a.css">
+	<link rel="stylesheet" href="/_app/assets/pages/__layout.svelte-ba70760e.css">
+	<link rel="stylesheet" href="/_app/assets/pages/index.svelte-1de5bad5.css">
+	<link rel="modulepreload" href="/_app/start-19942444.js">
+	<link rel="modulepreload" href="/_app/chunks/vendor-978cb2a8.js">
+	<link rel="modulepreload" href="/_app/pages/__layout.svelte-7ec189f3.js">
+	<link rel="modulepreload" href="/_app/pages/index.svelte-5df22292.js">
+	</head>
+	<body>
+		<div>
+
+
+
+
+<button class="darkModeButton mdc-fab" style=""><div class="mdc-fab__ripple"></div>
+  <svg class="mdc-fab__icon" aria-hidden="true" focusable="false" tabindex="-1" viewBox="0 0 24 24"><path fill="currentColor" d="M17.75,4.09L15.22,6.03L16.13,9.09L13.5,7.28L10.87,9.09L11.78,6.03L9.25,4.09L12.44,4L13.5,1L14.56,4L17.75,4.09M21.25,11L19.61,12.25L20.2,14.23L18.5,13.06L16.8,14.23L17.39,12.25L15.75,11L17.81,10.95L18.5,9L19.19,10.95L21.25,11M18.97,15.95C19.8,15.87 20.69,17.05 20.16,17.8C19.84,18.25 19.5,18.67 19.08,19.07C15.17,23 8.84,23 4.94,19.07C1.03,15.17 1.03,8.83 4.94,4.93C5.34,4.53 5.76,4.17 6.21,3.85C6.96,3.32 8.14,4.21 8.06,5.04C7.79,7.9 8.75,10.87 10.95,13.06C13.14,15.26 16.1,16.22 18.97,15.95M17.33,17.97C14.5,17.81 11.7,16.64 9.53,14.5C7.36,12.31 6.2,9.5 6.04,6.68C3.23,9.82 3.34,14.64 6.35,17.66C9.37,20.67 14.19,20.78 17.33,17.97Z"></path></svg></button>
+ 
+<div class="container"><label class="textField mdc-text-field mdc-text-field--textarea mdc-text-field--outlined mdc-text-field--label-floating" style="
+			width: 100%;
+			height: 100%;
+			align-items: stretch;
+		" spellcheck="false">
+    <div class="mdc-notched-outline"><div class="mdc-notched-outline__leading"></div>
+  <div class="mdc-notched-outline__notch" style=""><span class="mdc-floating-label mdc-floating-label--float-above" style="">Source</span></div>
+  <div class="mdc-notched-outline__trailing"></div>
+</div>
+    
+    
+    <span class=""><textarea class="mdc-text-field__input" style="resize: none; ">
+# This Program Is Created Only For Practise and Educational Purpose Only
+# This Program Is Created By S.S.B
+# This Program Is Completely Free And Open Source
+__author__='''
+
+S.S.B
+surajsinghbisht054@gmail.com
+https://bitforestinfo.blogspot.com
+'''
+#
+#
+##################################################
+######## Please Don't Remove Author Name #########
+############### Thanks ###########################
+##################################################
+#
+#
+# Here Importing Modules
+from Configuration_base import *
+
+try:
+	import Tkinter, ttk
+except:
+	import tkinter as Tkinter
+	import tkinter.ttk as ttk
+	
+import player, ListPanel, DisplayPanel, os, threading, time
+
+class Controls:
+	def __init__(self, root, playing, player, volume):
+		self.playervolume=volume
+		self.root=Tkinter.Frame(root)
+		self.root.pack()
+		self.status=Tkinter.IntVar() # For Song Status
+		self.playing=playing
+		self.player=player
+		self.var=Tkinter.IntVar() # For Volume Bar
+		self.var.set(1.0)
+		self.songtime=Tkinter.IntVar()
+		self.create_control_panel()
+		#self.time_thread()
+		#print self.player.playing
+
+	def time_thread(self):
+		threading.Thread(target=self.update_time_).start()
+		return
+	
+		
+	def update_time_(self):
+		while True:
+			time.sleep(2)
+			if self.player.player.playing:
+				pass
+			else:
+				try:
+					print ('Playing Next Music')
+					self.Next()
+					pass
+				except Exception as e:
+					print ('Playing Next Music- Error',e)
+					pass
+				
+				
+	def create_control_panel(self):
+		frame=Tkinter.LabelFrame(self.root)
+		frame.pack(expand='yes',fill='x',side='top')
+		add_fileicon=Tkinter.PhotoImage(file="../Icons/add_file.gif")
+		add_directoryicon=Tkinter.PhotoImage(file="../Icons/add_directory.gif")
+		exiticon=Tkinter.PhotoImage(file="../Icons/exit.gif")
+		playicon=Tkinter.PhotoImage(file="../Icons/play.gif")
+		pauseicon=Tkinter.PhotoImage(file="../Icons/pause.gif")
+		stopicon=Tkinter.PhotoImage(file="../Icons/stop.gif")
+		rewindicon=Tkinter.PhotoImage(file="../Icons/rewind.gif")
+		fast_forwardicon=Tkinter.PhotoImage(file="../Icons/fast_forward.gif")
+		previous_trackicon=Tkinter.PhotoImage(file="../Icons/previous_track.gif")
+		next_trackicon=Tkinter.PhotoImage(file="../Icons/next_track.gif")
+		self.muteicon=Tkinter.PhotoImage(file="../Icons/mute.gif")
+		self.unmuteicon=Tkinter.PhotoImage(file="../Icons/unmute.gif")
+		delete_selectedicon=Tkinter.PhotoImage(file="../Icons/delete_selected.gif")
+
+		list_file=[
+			(playicon,'self.play'),
+			(pauseicon,'self.pause'),
+			(stopicon,'self.stop'),
+			(previous_trackicon,'self.previous'),
+			(rewindicon,'self.rewind'),
+			(fast_forwardicon,'self.fast'),
+			(next_trackicon,'self.Next'),]
+		for i,j in list_file:
+			storeobj=ttk.Button(frame, image=i,command=eval(j))
+			storeobj.pack(side='left')
+			storeobj.image=i
+		self.volume_label=Tkinter.Button(frame,image=self.unmuteicon)
+		self.volume_label.image=self.unmuteicon
+		
+		volume=ttk.Scale(frame,from_=Volume_lowest_value, to=Volume_highest_value ,variable=self.var, command=self.update_volume)
+		volume.pack(side='right', padx=10, )
+		self.volume_label.pack(side='right')
+		return
+
+	
+	def update_volume(self, event=None):
+		if Volume_lowest_value==self.var.get():
+			self.volume_label.config(state='active')
+			self.volume_label.config(image=self.muteicon)
+			self.playervolume.set(0.0)
+			self.volume_label.config(state='disabled')
+		else:
+			self.volume_label.config(state='active')
+			self.volume_label.config(image=self.unmuteicon)
+			self.playervolume.set(self.volume_equalize())
+			self.volume_label.config(state='disabled')
+		return
+	
+	def volume_equalize(self):
+		if len(str(self.var.get()))==1:
+			val='0.{}'.format(str(self.var.get()))
+		elif len(str(self.var.get()))==2:
+			val='{}.{}'.format(str(self.var.get())[0],str(self.var.get())[1])
+		else:
+			val=self.var.get()
+		return float(val)
+	
+	def mute(self):
+		self.var.set(0)
+		return self.update_volume()
+	def unmute(self):
+		self.var.set(11)
+		return self.update_volume()
+	def increase_volume(self):
+		high=Volume_highest_value-5
+		if self.var.get() < high:
+			store=self.var.get()+5
+			self.var.set(store)
+			return self.update_volume()
+	def decrease_volume(self):
+		low=6
+		if self.var.get() > low :
+			store=self.var.get()-5
+			self.var.set(store)
+			return self.update_volume()
+			
+	def play(self):
+		if self.status.get()==0:
+			k=self.player.play_song()
+			self.status.set(1)
+			return k
+		elif self.status.get()==1:
+			k=self.player.play()
+			self.status.set(0)
+			return k
+		else:
+			print ('something wrong on controls.Controls.play')
+			print ('or playing variable is empty')
+			return 'Nothing'
+	
+	def pause(self):
+		if self.status.get()==0 or self.status.get()==1:
+			self.player.pause()
+		return
+		
+	def stop(self):
+		self.player.stop()
+		return
+	
+	def previous(self):
+		try:
+			dirbase=os.path.dirname(self.playing.get())
+			dirt=os.listdir(dirbase)
+			base=os.path.basename(self.playing.get())
+			k=dirt.index(base)-1
+			path=os.path.join(dirbase, dirt[k])
+			print (path)
+			self.playing.set(path)
+			pass
+		except:
+			pass
+	def fast(self):
+		return self.player.fast_forward()
+	
+	def Next(self):
+		try:
+			dirbase=os.path.dirname(self.playing.get())
+			dirt=os.listdir(dirbase)
+			base=os.path.basename(self.playing.get())
+			k=dirt.index(base)-1
+			path=os.path.join(dirbase, dirt[k])
+			print (path)
+			self.playing.set(path)
+			pass
+		except:
+			pass
+	def rewind(self):
+		return self.player.rewind()
+		
+class Main:
+	def __init__(self, root=None):
+		self.root=Tkinter.Frame(root)
+		self.root.pack(side='top')
+		
+		self.path=Tkinter.StringVar()		   # For Song Path
+		self.song_time=Tkinter.StringVar()	  # For Song Playing Time
+		self.song_duration=Tkinter.StringVar()  # For Song Duration
+		self.volume=Tkinter.IntVar()			# For Song Volume
+
+		# ============= Creating Media Player	   ======================================================
+		mediaplayer=player.mediaplayer(self.path, self.song_time, self.song_duration, self.volume)
+
+		# ============= Creating Display Panel	  ======================================================
+		DisplayPanel.Player(self.root, self.path, self.song_time, self.song_duration)
+
+		# ============= Creating Control Panel	  ======================================================
+		lit2=Controls(self.root, self.path, mediaplayer, self.volume)
+		self.hook2=lit2
+		# ============= Here Connecting List Panel  ======================================================
+		lit=ListPanel.main(self.root, self.path)
+		self.hook=lit.hook
+		
+		
+if __name__=='__main__':
+	root=Tkinter.Tk()
+	Main(root)
+	root.mainloop()
+</textarea>
+        </span>
+    
+    </label>
+
+	<div class="code">
+  <pre data-language="python" style="
+				margin: 0;
+				display: inline-block;
+			" class=" svelte-nstrv8">
+    <code class="hljs">
+      <!-- HTML_TAG_START -->
+<span class="hljs-comment"># This Program Is Created Only For Practise and Educational Purpose Only</span>
+<span class="hljs-comment"># This Program Is Created By S.S.B</span>
+<span class="hljs-comment"># This Program Is Completely Free And Open Source</span>
+__author__=<span class="hljs-string">&#x27;&#x27;&#x27;
+
+S.S.B
+surajsinghbisht054@gmail.com
+https://bitforestinfo.blogspot.com
+&#x27;&#x27;&#x27;</span>
+<span class="hljs-comment">#</span>
+<span class="hljs-comment">#</span>
+<span class="hljs-comment">##################################################</span>
+<span class="hljs-comment">######## Please Don&#x27;t Remove Author Name #########</span>
+<span class="hljs-comment">############### Thanks ###########################</span>
+<span class="hljs-comment">##################################################</span>
+<span class="hljs-comment">#</span>
+<span class="hljs-comment">#</span>
+<span class="hljs-comment"># Here Importing Modules</span>
+<span class="hljs-keyword">from</span> Configuration_base <span class="hljs-keyword">import</span> *
+
+<span class="hljs-keyword">try</span>:
+	<span class="hljs-keyword">import</span> Tkinter, ttk
+<span class="hljs-keyword">except</span>:
+	<span class="hljs-keyword">import</span> tkinter <span class="hljs-keyword">as</span> Tkinter
+	<span class="hljs-keyword">import</span> tkinter.ttk <span class="hljs-keyword">as</span> ttk
+	
+<span class="hljs-keyword">import</span> player, ListPanel, DisplayPanel, os, threading, time
+
+<span class="hljs-keyword">class</span> <span class="hljs-title class_">Controls</span>:
+	<span class="hljs-keyword">def</span> <span class="hljs-title function_">__init__</span>(<span class="hljs-params">self, root, playing, player, volume</span>):
+		self.playervolume=volume
+		self.root=Tkinter.Frame(root)
+		self.root.pack()
+		self.status=Tkinter.IntVar() <span class="hljs-comment"># For Song Status</span>
+		self.playing=playing
+		self.player=player
+		self.var=Tkinter.IntVar() <span class="hljs-comment"># For Volume Bar</span>
+		self.var.<span class="hljs-built_in">set</span>(<span class="hljs-number">1.0</span>)
+		self.songtime=Tkinter.IntVar()
+		self.create_control_panel()
+		<span class="hljs-comment">#self.time_thread()</span>
+		<span class="hljs-comment">#print self.player.playing</span>
+
+	<span class="hljs-keyword">def</span> <span class="hljs-title function_">time_thread</span>(<span class="hljs-params">self</span>):
+		threading.Thread(target=self.update_time_).start()
+		<span class="hljs-keyword">return</span>
+	
+		
+	<span class="hljs-keyword">def</span> <span class="hljs-title function_">update_time_</span>(<span class="hljs-params">self</span>):
+		<span class="hljs-keyword">while</span> <span class="hljs-literal">True</span>:
+			time.sleep(<span class="hljs-number">2</span>)
+			<span class="hljs-keyword">if</span> self.player.player.playing:
+				<span class="hljs-keyword">pass</span>
+			<span class="hljs-keyword">else</span>:
+				<span class="hljs-keyword">try</span>:
+					<span class="hljs-built_in">print</span> (<span class="hljs-string">&#x27;Playing Next Music&#x27;</span>)
+					self.Next()
+					<span class="hljs-keyword">pass</span>
+				<span class="hljs-keyword">except</span> Exception <span class="hljs-keyword">as</span> e:
+					<span class="hljs-built_in">print</span> (<span class="hljs-string">&#x27;Playing Next Music- Error&#x27;</span>,e)
+					<span class="hljs-keyword">pass</span>
+				
+				
+	<span class="hljs-keyword">def</span> <span class="hljs-title function_">create_control_panel</span>(<span class="hljs-params">self</span>):
+		frame=Tkinter.LabelFrame(self.root)
+		frame.pack(expand=<span class="hljs-string">&#x27;yes&#x27;</span>,fill=<span class="hljs-string">&#x27;x&#x27;</span>,side=<span class="hljs-string">&#x27;top&#x27;</span>)
+		add_fileicon=Tkinter.PhotoImage(file=<span class="hljs-string">&quot;../Icons/add_file.gif&quot;</span>)
+		add_directoryicon=Tkinter.PhotoImage(file=<span class="hljs-string">&quot;../Icons/add_directory.gif&quot;</span>)
+		exiticon=Tkinter.PhotoImage(file=<span class="hljs-string">&quot;../Icons/exit.gif&quot;</span>)
+		playicon=Tkinter.PhotoImage(file=<span class="hljs-string">&quot;../Icons/play.gif&quot;</span>)
+		pauseicon=Tkinter.PhotoImage(file=<span class="hljs-string">&quot;../Icons/pause.gif&quot;</span>)
+		stopicon=Tkinter.PhotoImage(file=<span class="hljs-string">&quot;../Icons/stop.gif&quot;</span>)
+		rewindicon=Tkinter.PhotoImage(file=<span class="hljs-string">&quot;../Icons/rewind.gif&quot;</span>)
+		fast_forwardicon=Tkinter.PhotoImage(file=<span class="hljs-string">&quot;../Icons/fast_forward.gif&quot;</span>)
+		previous_trackicon=Tkinter.PhotoImage(file=<span class="hljs-string">&quot;../Icons/previous_track.gif&quot;</span>)
+		next_trackicon=Tkinter.PhotoImage(file=<span class="hljs-string">&quot;../Icons/next_track.gif&quot;</span>)
+		self.muteicon=Tkinter.PhotoImage(file=<span class="hljs-string">&quot;../Icons/mute.gif&quot;</span>)
+		self.unmuteicon=Tkinter.PhotoImage(file=<span class="hljs-string">&quot;../Icons/unmute.gif&quot;</span>)
+		delete_selectedicon=Tkinter.PhotoImage(file=<span class="hljs-string">&quot;../Icons/delete_selected.gif&quot;</span>)
+
+		list_file=[
+			(playicon,<span class="hljs-string">&#x27;self.play&#x27;</span>),
+			(pauseicon,<span class="hljs-string">&#x27;self.pause&#x27;</span>),
+			(stopicon,<span class="hljs-string">&#x27;self.stop&#x27;</span>),
+			(previous_trackicon,<span class="hljs-string">&#x27;self.previous&#x27;</span>),
+			(rewindicon,<span class="hljs-string">&#x27;self.rewind&#x27;</span>),
+			(fast_forwardicon,<span class="hljs-string">&#x27;self.fast&#x27;</span>),
+			(next_trackicon,<span class="hljs-string">&#x27;self.Next&#x27;</span>),]
+		<span class="hljs-keyword">for</span> i,j <span class="hljs-keyword">in</span> list_file:
+			storeobj=ttk.Button(frame, image=i,command=<span class="hljs-built_in">eval</span>(j))
+			storeobj.pack(side=<span class="hljs-string">&#x27;left&#x27;</span>)
+			storeobj.image=i
+		self.volume_label=Tkinter.Button(frame,image=self.unmuteicon)
+		self.volume_label.image=self.unmuteicon
+		
+		volume=ttk.Scale(frame,from_=Volume_lowest_value, to=Volume_highest_value ,variable=self.var, command=self.update_volume)
+		volume.pack(side=<span class="hljs-string">&#x27;right&#x27;</span>, padx=<span class="hljs-number">10</span>, )
+		self.volume_label.pack(side=<span class="hljs-string">&#x27;right&#x27;</span>)
+		<span class="hljs-keyword">return</span>
+
+	
+	<span class="hljs-keyword">def</span> <span class="hljs-title function_">update_volume</span>(<span class="hljs-params">self, event=<span class="hljs-literal">None</span></span>):
+		<span class="hljs-keyword">if</span> Volume_lowest_value==self.var.get():
+			self.volume_label.config(state=<span class="hljs-string">&#x27;active&#x27;</span>)
+			self.volume_label.config(image=self.muteicon)
+			self.playervolume.<span class="hljs-built_in">set</span>(<span class="hljs-number">0.0</span>)
+			self.volume_label.config(state=<span class="hljs-string">&#x27;disabled&#x27;</span>)
+		<span class="hljs-keyword">else</span>:
+			self.volume_label.config(state=<span class="hljs-string">&#x27;active&#x27;</span>)
+			self.volume_label.config(image=self.unmuteicon)
+			self.playervolume.<span class="hljs-built_in">set</span>(self.volume_equalize())
+			self.volume_label.config(state=<span class="hljs-string">&#x27;disabled&#x27;</span>)
+		<span class="hljs-keyword">return</span>
+	
+	<span class="hljs-keyword">def</span> <span class="hljs-title function_">volume_equalize</span>(<span class="hljs-params">self</span>):
+		<span class="hljs-keyword">if</span> <span class="hljs-built_in">len</span>(<span class="hljs-built_in">str</span>(self.var.get()))==<span class="hljs-number">1</span>:
+			val=<span class="hljs-string">&#x27;0.{}&#x27;</span>.<span class="hljs-built_in">format</span>(<span class="hljs-built_in">str</span>(self.var.get()))
+		<span class="hljs-keyword">elif</span> <span class="hljs-built_in">len</span>(<span class="hljs-built_in">str</span>(self.var.get()))==<span class="hljs-number">2</span>:
+			val=<span class="hljs-string">&#x27;{}.{}&#x27;</span>.<span class="hljs-built_in">format</span>(<span class="hljs-built_in">str</span>(self.var.get())[<span class="hljs-number">0</span>],<span class="hljs-built_in">str</span>(self.var.get())[<span class="hljs-number">1</span>])
+		<span class="hljs-keyword">else</span>:
+			val=self.var.get()
+		<span class="hljs-keyword">return</span> <span class="hljs-built_in">float</span>(val)
+	
+	<span class="hljs-keyword">def</span> <span class="hljs-title function_">mute</span>(<span class="hljs-params">self</span>):
+		self.var.<span class="hljs-built_in">set</span>(<span class="hljs-number">0</span>)
+		<span class="hljs-keyword">return</span> self.update_volume()
+	<span class="hljs-keyword">def</span> <span class="hljs-title function_">unmute</span>(<span class="hljs-params">self</span>):
+		self.var.<span class="hljs-built_in">set</span>(<span class="hljs-number">11</span>)
+		<span class="hljs-keyword">return</span> self.update_volume()
+	<span class="hljs-keyword">def</span> <span class="hljs-title function_">increase_volume</span>(<span class="hljs-params">self</span>):
+		high=Volume_highest_value-<span class="hljs-number">5</span>
+		<span class="hljs-keyword">if</span> self.var.get() &lt; high:
+			store=self.var.get()+<span class="hljs-number">5</span>
+			self.var.<span class="hljs-built_in">set</span>(store)
+			<span class="hljs-keyword">return</span> self.update_volume()
+	<span class="hljs-keyword">def</span> <span class="hljs-title function_">decrease_volume</span>(<span class="hljs-params">self</span>):
+		low=<span class="hljs-number">6</span>
+		<span class="hljs-keyword">if</span> self.var.get() &gt; low :
+			store=self.var.get()-<span class="hljs-number">5</span>
+			self.var.<span class="hljs-built_in">set</span>(store)
+			<span class="hljs-keyword">return</span> self.update_volume()
+			
+	<span class="hljs-keyword">def</span> <span class="hljs-title function_">play</span>(<span class="hljs-params">self</span>):
+		<span class="hljs-keyword">if</span> self.status.get()==<span class="hljs-number">0</span>:
+			k=self.player.play_song()
+			self.status.<span class="hljs-built_in">set</span>(<span class="hljs-number">1</span>)
+			<span class="hljs-keyword">return</span> k
+		<span class="hljs-keyword">elif</span> self.status.get()==<span class="hljs-number">1</span>:
+			k=self.player.play()
+			self.status.<span class="hljs-built_in">set</span>(<span class="hljs-number">0</span>)
+			<span class="hljs-keyword">return</span> k
+		<span class="hljs-keyword">else</span>:
+			<span class="hljs-built_in">print</span> (<span class="hljs-string">&#x27;something wrong on controls.Controls.play&#x27;</span>)
+			<span class="hljs-built_in">print</span> (<span class="hljs-string">&#x27;or playing variable is empty&#x27;</span>)
+			<span class="hljs-keyword">return</span> <span class="hljs-string">&#x27;Nothing&#x27;</span>
+	
+	<span class="hljs-keyword">def</span> <span class="hljs-title function_">pause</span>(<span class="hljs-params">self</span>):
+		<span class="hljs-keyword">if</span> self.status.get()==<span class="hljs-number">0</span> <span class="hljs-keyword">or</span> self.status.get()==<span class="hljs-number">1</span>:
+			self.player.pause()
+		<span class="hljs-keyword">return</span>
+		
+	<span class="hljs-keyword">def</span> <span class="hljs-title function_">stop</span>(<span class="hljs-params">self</span>):
+		self.player.stop()
+		<span class="hljs-keyword">return</span>
+	
+	<span class="hljs-keyword">def</span> <span class="hljs-title function_">previous</span>(<span class="hljs-params">self</span>):
+		<span class="hljs-keyword">try</span>:
+			dirbase=os.path.dirname(self.playing.get())
+			dirt=os.listdir(dirbase)
+			base=os.path.basename(self.playing.get())
+			k=dirt.index(base)-<span class="hljs-number">1</span>
+			path=os.path.join(dirbase, dirt[k])
+			<span class="hljs-built_in">print</span> (path)
+			self.playing.<span class="hljs-built_in">set</span>(path)
+			<span class="hljs-keyword">pass</span>
+		<span class="hljs-keyword">except</span>:
+			<span class="hljs-keyword">pass</span>
+	<span class="hljs-keyword">def</span> <span class="hljs-title function_">fast</span>(<span class="hljs-params">self</span>):
+		<span class="hljs-keyword">return</span> self.player.fast_forward()
+	
+	<span class="hljs-keyword">def</span> <span class="hljs-title function_">Next</span>(<span class="hljs-params">self</span>):
+		<span class="hljs-keyword">try</span>:
+			dirbase=os.path.dirname(self.playing.get())
+			dirt=os.listdir(dirbase)
+			base=os.path.basename(self.playing.get())
+			k=dirt.index(base)-<span class="hljs-number">1</span>
+			path=os.path.join(dirbase, dirt[k])
+			<span class="hljs-built_in">print</span> (path)
+			self.playing.<span class="hljs-built_in">set</span>(path)
+			<span class="hljs-keyword">pass</span>
+		<span class="hljs-keyword">except</span>:
+			<span class="hljs-keyword">pass</span>
+	<span class="hljs-keyword">def</span> <span class="hljs-title function_">rewind</span>(<span class="hljs-params">self</span>):
+		<span class="hljs-keyword">return</span> self.player.rewind()
+		
+<span class="hljs-keyword">class</span> <span class="hljs-title class_">Main</span>:
+	<span class="hljs-keyword">def</span> <span class="hljs-title function_">__init__</span>(<span class="hljs-params">self, root=<span class="hljs-literal">None</span></span>):
+		self.root=Tkinter.Frame(root)
+		self.root.pack(side=<span class="hljs-string">&#x27;top&#x27;</span>)
+		
+		self.path=Tkinter.StringVar()		   <span class="hljs-comment"># For Song Path</span>
+		self.song_time=Tkinter.StringVar()	  <span class="hljs-comment"># For Song Playing Time</span>
+		self.song_duration=Tkinter.StringVar()  <span class="hljs-comment"># For Song Duration</span>
+		self.volume=Tkinter.IntVar()			<span class="hljs-comment"># For Song Volume</span>
+
+		<span class="hljs-comment"># ============= Creating Media Player	   ======================================================</span>
+		mediaplayer=player.mediaplayer(self.path, self.song_time, self.song_duration, self.volume)
+
+		<span class="hljs-comment"># ============= Creating Display Panel	  ======================================================</span>
+		DisplayPanel.Player(self.root, self.path, self.song_time, self.song_duration)
+
+		<span class="hljs-comment"># ============= Creating Control Panel	  ======================================================</span>
+		lit2=Controls(self.root, self.path, mediaplayer, self.volume)
+		self.hook2=lit2
+		<span class="hljs-comment"># ============= Here Connecting List Panel  ======================================================</span>
+		lit=ListPanel.main(self.root, self.path)
+		self.hook=lit.hook
+		
+		
+<span class="hljs-keyword">if</span> __name__==<span class="hljs-string">&#x27;__main__&#x27;</span>:
+	root=Tkinter.Tk()
+	Main(root)
+	root.mainloop()
+<!-- HTML_TAG_END -->
+    </code>
+  </pre>
+</div>
+	<label class="textField mdc-text-field mdc-text-field--textarea mdc-text-field--outlined mdc-text-field--label-floating" style="
+			width: 100%;
+			height: 100%;
+			align-items: stretch;
+		" spellcheck="false">
+    <div class="mdc-notched-outline"><div class="mdc-notched-outline__leading"></div>
+  <div class="mdc-notched-outline__notch" style=""><span class="mdc-floating-label mdc-floating-label--float-above" style="">Block brackets</span></div>
+  <div class="mdc-notched-outline__trailing"></div>
+</div>
+    
+    
+    <span class=""><textarea class="mdc-text-field__input" style="resize: none; " readonly>
+# This Program Is Created Only For Practise and Educational Purpose Only
+# This Program Is Created By S.S.B
+# This Program Is Completely Free And Open Source
+__author__='''
+
+S.S.B
+surajsinghbisht054@gmail.com
+https://bitforestinfo.blogspot.com
+'''
+#
+#
+##################################################
+######## Please Don't Remove Author Name #########
+############### Thanks ###########################
+##################################################
+#
+#
+# Here Importing Modules
+from Configuration_base import *
+
+try:
+{
+	import Tkinter, ttk
+}
+except:
+{
+	import tkinter as Tkinter
+	import tkinter.ttk as ttk
+	
+}
+import player, ListPanel, DisplayPanel, os, threading, time
+
+class Controls:
+{
+	def __init__(self, root, playing, player, volume):
+	{
+		self.playervolume=volume
+		self.root=Tkinter.Frame(root)
+		self.root.pack()
+		self.status=Tkinter.IntVar() # For Song Status
+		self.playing=playing
+		self.player=player
+		self.var=Tkinter.IntVar() # For Volume Bar
+		self.var.set(1.0)
+		self.songtime=Tkinter.IntVar()
+		self.create_control_panel()
+		#self.time_thread()
+		#print self.player.playing
+	}
+}
+
+{
+	def time_thread(self):
+	{
+		threading.Thread(target=self.update_time_).start()
+		return
+	}
+	
+	{
+		
+	}
+	def update_time_(self):
+	{
+		while True:
+		{
+			time.sleep(2)
+			if self.player.player.playing:
+			{
+				pass
+			}
+			else:
+			{
+				try:
+				{
+					print ('Playing Next Music')
+					self.Next()
+					pass
+				}
+				except Exception as e:
+				{
+					print ('Playing Next Music- Error',e)
+					pass
+				}
+				
+				
+			}
+		}
+	}
+	def create_control_panel(self):
+	{
+		frame=Tkinter.LabelFrame(self.root)
+		frame.pack(expand='yes',fill='x',side='top')
+		add_fileicon=Tkinter.PhotoImage(file="../Icons/add_file.gif")
+		add_directoryicon=Tkinter.PhotoImage(file="../Icons/add_directory.gif")
+		exiticon=Tkinter.PhotoImage(file="../Icons/exit.gif")
+		playicon=Tkinter.PhotoImage(file="../Icons/play.gif")
+		pauseicon=Tkinter.PhotoImage(file="../Icons/pause.gif")
+		stopicon=Tkinter.PhotoImage(file="../Icons/stop.gif")
+		rewindicon=Tkinter.PhotoImage(file="../Icons/rewind.gif")
+		fast_forwardicon=Tkinter.PhotoImage(file="../Icons/fast_forward.gif")
+		previous_trackicon=Tkinter.PhotoImage(file="../Icons/previous_track.gif")
+		next_trackicon=Tkinter.PhotoImage(file="../Icons/next_track.gif")
+		self.muteicon=Tkinter.PhotoImage(file="../Icons/mute.gif")
+		self.unmuteicon=Tkinter.PhotoImage(file="../Icons/unmute.gif")
+		delete_selectedicon=Tkinter.PhotoImage(file="../Icons/delete_selected.gif")
+	}
+}
+
+{
+	{
+		list_file=[
+		{
+			(playicon,'self.play'),
+			(pauseicon,'self.pause'),
+			(stopicon,'self.stop'),
+			(previous_trackicon,'self.previous'),
+			(rewindicon,'self.rewind'),
+			(fast_forwardicon,'self.fast'),
+			(next_trackicon,'self.Next'),]
+		}
+		for i,j in list_file:
+		{
+			storeobj=ttk.Button(frame, image=i,command=eval(j))
+			storeobj.pack(side='left')
+			storeobj.image=i
+		}
+		self.volume_label=Tkinter.Button(frame,image=self.unmuteicon)
+		self.volume_label.image=self.unmuteicon
+		
+		volume=ttk.Scale(frame,from_=Volume_lowest_value, to=Volume_highest_value ,variable=self.var, command=self.update_volume)
+		volume.pack(side='right', padx=10, )
+		self.volume_label.pack(side='right')
+		return
+	}
+}
+
+{
+	
+	def update_volume(self, event=None):
+	{
+		if Volume_lowest_value==self.var.get():
+		{
+			self.volume_label.config(state='active')
+			self.volume_label.config(image=self.muteicon)
+			self.playervolume.set(0.0)
+			self.volume_label.config(state='disabled')
+		}
+		else:
+		{
+			self.volume_label.config(state='active')
+			self.volume_label.config(image=self.unmuteicon)
+			self.playervolume.set(self.volume_equalize())
+			self.volume_label.config(state='disabled')
+		}
+		return
+	}
+	
+	def volume_equalize(self):
+	{
+		if len(str(self.var.get()))==1:
+		{
+			val='0.{}'.format(str(self.var.get()))
+		}
+		elif len(str(self.var.get()))==2:
+		{
+			val='{}.{}'.format(str(self.var.get())[0],str(self.var.get())[1])
+		}
+		else:
+		{
+			val=self.var.get()
+		}
+		return float(val)
+	}
+	
+	def mute(self):
+	{
+		self.var.set(0)
+		return self.update_volume()
+	}
+	def unmute(self):
+	{
+		self.var.set(11)
+		return self.update_volume()
+	}
+	def increase_volume(self):
+	{
+		high=Volume_highest_value-5
+		if self.var.get() < high:
+		{
+			store=self.var.get()+5
+			self.var.set(store)
+			return self.update_volume()
+		}
+	}
+	def decrease_volume(self):
+	{
+		low=6
+		if self.var.get() > low :
+		{
+			store=self.var.get()-5
+			self.var.set(store)
+			return self.update_volume()
+			
+		}
+	}
+	def play(self):
+	{
+		if self.status.get()==0:
+		{
+			k=self.player.play_song()
+			self.status.set(1)
+			return k
+		}
+		elif self.status.get()==1:
+		{
+			k=self.player.play()
+			self.status.set(0)
+			return k
+		}
+		else:
+		{
+			print ('something wrong on controls.Controls.play')
+			print ('or playing variable is empty')
+			return 'Nothing'
+		}
+	}
+	
+	def pause(self):
+	{
+		if self.status.get()==0 or self.status.get()==1:
+		{
+			self.player.pause()
+		}
+		return
+		
+	}
+	def stop(self):
+	{
+		self.player.stop()
+		return
+	}
+	
+	def previous(self):
+	{
+		try:
+		{
+			dirbase=os.path.dirname(self.playing.get())
+			dirt=os.listdir(dirbase)
+			base=os.path.basename(self.playing.get())
+			k=dirt.index(base)-1
+			path=os.path.join(dirbase, dirt[k])
+			print (path)
+			self.playing.set(path)
+			pass
+		}
+		except:
+		{
+			pass
+		}
+	}
+	def fast(self):
+	{
+		return self.player.fast_forward()
+	}
+	
+	def Next(self):
+	{
+		try:
+		{
+			dirbase=os.path.dirname(self.playing.get())
+			dirt=os.listdir(dirbase)
+			base=os.path.basename(self.playing.get())
+			k=dirt.index(base)-1
+			path=os.path.join(dirbase, dirt[k])
+			print (path)
+			self.playing.set(path)
+			pass
+		}
+		except:
+		{
+			pass
+		}
+	}
+	def rewind(self):
+	{
+		return self.player.rewind()
+		
+	}
+}
+class Main:
+{
+	def __init__(self, root=None):
+	{
+		self.root=Tkinter.Frame(root)
+		self.root.pack(side='top')
+		
+		self.path=Tkinter.StringVar()		   # For Song Path
+		self.song_time=Tkinter.StringVar()	  # For Song Playing Time
+		self.song_duration=Tkinter.StringVar()  # For Song Duration
+		self.volume=Tkinter.IntVar()			# For Song Volume
+	}
+}
+
+{
+	{
+		# ============= Creating Media Player	   ======================================================
+		mediaplayer=player.mediaplayer(self.path, self.song_time, self.song_duration, self.volume)
+	}
+}
+
+{
+	{
+		# ============= Creating Display Panel	  ======================================================
+		DisplayPanel.Player(self.root, self.path, self.song_time, self.song_duration)
+	}
+}
+
+{
+	{
+		# ============= Creating Control Panel	  ======================================================
+		lit2=Controls(self.root, self.path, mediaplayer, self.volume)
+		self.hook2=lit2
+		# ============= Here Connecting List Panel  ======================================================
+		lit=ListPanel.main(self.root, self.path)
+		self.hook=lit.hook
+		
+		
+	}
+}
+if __name__=='__main__':
+{
+	root=Tkinter.Tk()
+	Main(root)
+	root.mainloop()
+}
+</textarea>
+        </span>
+    
+    </label>
+
+	<label class="textField mdc-text-field mdc-text-field--textarea mdc-text-field--outlined mdc-text-field--label-floating" style="
+			width: 100%;
+			height: 100%;
+			align-items: stretch;
+		" spellcheck="false">
+    <div class="mdc-notched-outline"><div class="mdc-notched-outline__leading"></div>
+  <div class="mdc-notched-outline__notch" style=""><span class="mdc-floating-label mdc-floating-label--float-above" style="">Block keywords</span></div>
+  <div class="mdc-notched-outline__trailing"></div>
+</div>
+    
+    
+    <span class=""><textarea class="mdc-text-field__input" style="resize: none; " readonly>NEWLINE 
+NEWLINE # This Program Is Created Only For Practise and Educational Purpose Only
+NEWLINE # This Program Is Created By S.S.B
+NEWLINE # This Program Is Completely Free And Open Source
+NEWLINE __author__='''
+NEWLINE 
+NEWLINE S.S.B
+NEWLINE surajsinghbisht054@gmail.com
+NEWLINE https://bitforestinfo.blogspot.com
+NEWLINE '''
+NEWLINE #
+NEWLINE #
+NEWLINE ##################################################
+NEWLINE ######## Please Don't Remove Author Name #########
+NEWLINE ############### Thanks ###########################
+NEWLINE ##################################################
+NEWLINE #
+NEWLINE #
+NEWLINE # Here Importing Modules
+NEWLINE from Configuration_base import *
+NEWLINE 
+NEWLINE try:
+INDENT import Tkinter, ttk
+DEDENT except:
+INDENT import tkinter as Tkinter
+NEWLINE import tkinter.ttk as ttk
+NEWLINE 
+DEDENT import player, ListPanel, DisplayPanel, os, threading, time
+NEWLINE 
+NEWLINE class Controls:
+INDENT def __init__(self, root, playing, player, volume):
+INDENT self.playervolume=volume
+NEWLINE self.root=Tkinter.Frame(root)
+NEWLINE self.root.pack()
+NEWLINE self.status=Tkinter.IntVar() # For Song Status
+NEWLINE self.playing=playing
+NEWLINE self.player=player
+NEWLINE self.var=Tkinter.IntVar() # For Volume Bar
+NEWLINE self.var.set(1.0)
+NEWLINE self.songtime=Tkinter.IntVar()
+NEWLINE self.create_control_panel()
+NEWLINE #self.time_thread()
+NEWLINE #print self.player.playing
+DEDENT DEDENT 
+INDENT def time_thread(self):
+INDENT threading.Thread(target=self.update_time_).start()
+NEWLINE return
+DEDENT 
+INDENT 
+DEDENT def update_time_(self):
+INDENT while True:
+INDENT time.sleep(2)
+NEWLINE if self.player.player.playing:
+INDENT pass
+DEDENT else:
+INDENT try:
+INDENT print ('Playing Next Music')
+NEWLINE self.Next()
+NEWLINE pass
+DEDENT except Exception as e:
+INDENT print ('Playing Next Music- Error',e)
+NEWLINE pass
+DEDENT 
+NEWLINE 
+DEDENT DEDENT DEDENT def create_control_panel(self):
+INDENT frame=Tkinter.LabelFrame(self.root)
+NEWLINE frame.pack(expand='yes',fill='x',side='top')
+NEWLINE add_fileicon=Tkinter.PhotoImage(file="../Icons/add_file.gif")
+NEWLINE add_directoryicon=Tkinter.PhotoImage(file="../Icons/add_directory.gif")
+NEWLINE exiticon=Tkinter.PhotoImage(file="../Icons/exit.gif")
+NEWLINE playicon=Tkinter.PhotoImage(file="../Icons/play.gif")
+NEWLINE pauseicon=Tkinter.PhotoImage(file="../Icons/pause.gif")
+NEWLINE stopicon=Tkinter.PhotoImage(file="../Icons/stop.gif")
+NEWLINE rewindicon=Tkinter.PhotoImage(file="../Icons/rewind.gif")
+NEWLINE fast_forwardicon=Tkinter.PhotoImage(file="../Icons/fast_forward.gif")
+NEWLINE previous_trackicon=Tkinter.PhotoImage(file="../Icons/previous_track.gif")
+NEWLINE next_trackicon=Tkinter.PhotoImage(file="../Icons/next_track.gif")
+NEWLINE self.muteicon=Tkinter.PhotoImage(file="../Icons/mute.gif")
+NEWLINE self.unmuteicon=Tkinter.PhotoImage(file="../Icons/unmute.gif")
+NEWLINE delete_selectedicon=Tkinter.PhotoImage(file="../Icons/delete_selected.gif")
+DEDENT DEDENT 
+INDENT INDENT list_file=[
+INDENT (playicon,'self.play'),
+NEWLINE (pauseicon,'self.pause'),
+NEWLINE (stopicon,'self.stop'),
+NEWLINE (previous_trackicon,'self.previous'),
+NEWLINE (rewindicon,'self.rewind'),
+NEWLINE (fast_forwardicon,'self.fast'),
+NEWLINE (next_trackicon,'self.Next'),]
+DEDENT for i,j in list_file:
+INDENT storeobj=ttk.Button(frame, image=i,command=eval(j))
+NEWLINE storeobj.pack(side='left')
+NEWLINE storeobj.image=i
+DEDENT self.volume_label=Tkinter.Button(frame,image=self.unmuteicon)
+NEWLINE self.volume_label.image=self.unmuteicon
+NEWLINE 
+NEWLINE volume=ttk.Scale(frame,from_=Volume_lowest_value, to=Volume_highest_value ,variable=self.var, command=self.update_volume)
+NEWLINE volume.pack(side='right', padx=10, )
+NEWLINE self.volume_label.pack(side='right')
+NEWLINE return
+DEDENT DEDENT 
+INDENT 
+NEWLINE def update_volume(self, event=None):
+INDENT if Volume_lowest_value==self.var.get():
+INDENT self.volume_label.config(state='active')
+NEWLINE self.volume_label.config(image=self.muteicon)
+NEWLINE self.playervolume.set(0.0)
+NEWLINE self.volume_label.config(state='disabled')
+DEDENT else:
+INDENT self.volume_label.config(state='active')
+NEWLINE self.volume_label.config(image=self.unmuteicon)
+NEWLINE self.playervolume.set(self.volume_equalize())
+NEWLINE self.volume_label.config(state='disabled')
+DEDENT return
+DEDENT 
+NEWLINE def volume_equalize(self):
+INDENT if len(str(self.var.get()))==1:
+INDENT val='0.{}'.format(str(self.var.get()))
+DEDENT elif len(str(self.var.get()))==2:
+INDENT val='{}.{}'.format(str(self.var.get())[0],str(self.var.get())[1])
+DEDENT else:
+INDENT val=self.var.get()
+DEDENT return float(val)
+DEDENT 
+NEWLINE def mute(self):
+INDENT self.var.set(0)
+NEWLINE return self.update_volume()
+DEDENT def unmute(self):
+INDENT self.var.set(11)
+NEWLINE return self.update_volume()
+DEDENT def increase_volume(self):
+INDENT high=Volume_highest_value-5
+NEWLINE if self.var.get() < high:
+INDENT store=self.var.get()+5
+NEWLINE self.var.set(store)
+NEWLINE return self.update_volume()
+DEDENT DEDENT def decrease_volume(self):
+INDENT low=6
+NEWLINE if self.var.get() > low :
+INDENT store=self.var.get()-5
+NEWLINE self.var.set(store)
+NEWLINE return self.update_volume()
+NEWLINE 
+DEDENT DEDENT def play(self):
+INDENT if self.status.get()==0:
+INDENT k=self.player.play_song()
+NEWLINE self.status.set(1)
+NEWLINE return k
+DEDENT elif self.status.get()==1:
+INDENT k=self.player.play()
+NEWLINE self.status.set(0)
+NEWLINE return k
+DEDENT else:
+INDENT print ('something wrong on controls.Controls.play')
+NEWLINE print ('or playing variable is empty')
+NEWLINE return 'Nothing'
+DEDENT DEDENT 
+NEWLINE def pause(self):
+INDENT if self.status.get()==0 or self.status.get()==1:
+INDENT self.player.pause()
+DEDENT return
+NEWLINE 
+DEDENT def stop(self):
+INDENT self.player.stop()
+NEWLINE return
+DEDENT 
+NEWLINE def previous(self):
+INDENT try:
+INDENT dirbase=os.path.dirname(self.playing.get())
+NEWLINE dirt=os.listdir(dirbase)
+NEWLINE base=os.path.basename(self.playing.get())
+NEWLINE k=dirt.index(base)-1
+NEWLINE path=os.path.join(dirbase, dirt[k])
+NEWLINE print (path)
+NEWLINE self.playing.set(path)
+NEWLINE pass
+DEDENT except:
+INDENT pass
+DEDENT DEDENT def fast(self):
+INDENT return self.player.fast_forward()
+DEDENT 
+NEWLINE def Next(self):
+INDENT try:
+INDENT dirbase=os.path.dirname(self.playing.get())
+NEWLINE dirt=os.listdir(dirbase)
+NEWLINE base=os.path.basename(self.playing.get())
+NEWLINE k=dirt.index(base)-1
+NEWLINE path=os.path.join(dirbase, dirt[k])
+NEWLINE print (path)
+NEWLINE self.playing.set(path)
+NEWLINE pass
+DEDENT except:
+INDENT pass
+DEDENT DEDENT def rewind(self):
+INDENT return self.player.rewind()
+NEWLINE 
+DEDENT DEDENT class Main:
+INDENT def __init__(self, root=None):
+INDENT self.root=Tkinter.Frame(root)
+NEWLINE self.root.pack(side='top')
+NEWLINE 
+NEWLINE self.path=Tkinter.StringVar()		   # For Song Path
+NEWLINE self.song_time=Tkinter.StringVar()	  # For Song Playing Time
+NEWLINE self.song_duration=Tkinter.StringVar()  # For Song Duration
+NEWLINE self.volume=Tkinter.IntVar()			# For Song Volume
+DEDENT DEDENT 
+INDENT INDENT # ============= Creating Media Player	   ======================================================
+NEWLINE mediaplayer=player.mediaplayer(self.path, self.song_time, self.song_duration, self.volume)
+DEDENT DEDENT 
+INDENT INDENT # ============= Creating Display Panel	  ======================================================
+NEWLINE DisplayPanel.Player(self.root, self.path, self.song_time, self.song_duration)
+DEDENT DEDENT 
+INDENT INDENT # ============= Creating Control Panel	  ======================================================
+NEWLINE lit2=Controls(self.root, self.path, mediaplayer, self.volume)
+NEWLINE self.hook2=lit2
+NEWLINE # ============= Here Connecting List Panel  ======================================================
+NEWLINE lit=ListPanel.main(self.root, self.path)
+NEWLINE self.hook=lit.hook
+NEWLINE 
+NEWLINE 
+DEDENT DEDENT if __name__=='__main__':
+INDENT root=Tkinter.Tk()
+NEWLINE Main(root)
+NEWLINE root.mainloop()
+DEDENT </textarea>
+        </span>
+    
+    </label>
+
+</div>
+
+
+		<script type="module" data-hydrate="fb5hsk">
+		import { start } from "/_app/start-19942444.js";
+		start({
+			target: document.querySelector('[data-hydrate="fb5hsk"]').parentNode,
+			paths: {"base":"","assets":""},
+			session: {},
+			route: true,
+			spa: false,
+			trailing_slash: "never",
+			hydrate: {
+				status: 200,
+				error: null,
+				nodes: [
+					import("/_app/pages/__layout.svelte-7ec189f3.js"),
+						import("/_app/pages/index.svelte-5df22292.js")
+				],
+				url: new URL("http://sveltekit-prerender/"),
+				params: {}
+			}
+		});
+	</script></div>
+	</body>
+</html>
