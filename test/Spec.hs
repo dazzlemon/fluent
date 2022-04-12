@@ -10,14 +10,16 @@ import Lexer ( getToken
              , TokenInfo(TokenInfo)
              )
 
-testSingleChar char token string = assertEqual (string ++ " with garbage")
+testSingleChar (char, token, string) = assertEqual (string ++ " with garbage")
   (Right (TokenInfo 0 token, "aboba")) (getToken (char:"aboba") 0)
 
-singleCharOperatorsTest = TestCase $ do
-  testSingleChar '(' ParenthesisLeft "left parenthesis"
-  testSingleChar ')' ParenthesisRight  "right parenthesis"
-  testSingleChar '{' BraceLeft "left brace"
-  testSingleChar '}' BraceRight "right brace"
+singleCharOperatorsTest = TestCase tests
+  where chars = [ ('(', ParenthesisLeft, "left parenthesis")
+                , (')', ParenthesisRight,  "right parenthesis")
+                , ('{', BraceLeft, "left brace")
+                , ('}', BraceRight, "right brace")
+                ]
+        tests = mapM_ testSingleChar chars
 
 -- BracketLeft '['
 -- BracketRight ']'
