@@ -6,7 +6,7 @@ import Test.HUnit
     )
 import System.Exit ( exitFailure, exitSuccess )
 import Lexer ( getToken
-             , Token(ParenthesisLeft, ParenthesisRight, BraceLeft, BraceRight)
+             , Token(..)
              , TokenInfo(TokenInfo)
              )
 
@@ -18,15 +18,16 @@ singleCharOperatorsTest = TestCase tests
                 , (')', ParenthesisRight,  "right parenthesis")
                 , ('{', BraceLeft, "left brace")
                 , ('}', BraceRight, "right brace")
+                , ('[', BracketLeft, "left bracket")
+                , (']', BracketRight, "right bracket")
+                , (';', Semicolon, "semicolon")
+                , ('_', WildCard, "wildcard")
+                , (':', NamedTuppleAccessOperator,
+                    "named tupple acess operator")
+                , ('=', NamedTuppleBindingOperator,
+                    "named tupple binding operator")
                 ]
         tests = mapM_ testSingleChar chars
-
--- BracketLeft '['
--- BracketRight ']'
--- Semicolon ';'
--- WildCard '_'
--- NamedTuppleAccessOperator ':'
--- NamedTuppleBindingOperator '='
 
 -- Number
 -- "12345"
