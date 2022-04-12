@@ -1,21 +1,24 @@
 import Test.HUnit
-    ( assertEqual,
-      runTestTT,
-      Counts(errors, failures),
-      Test(TestLabel, TestCase, TestList) )
+    ( assertEqual
+    , runTestTT
+    , Counts(errors, failures)
+    , Test(TestLabel, TestCase, TestList)
+    )
 import System.Exit ( exitFailure, exitSuccess )
-import Lexer (getToken, Token (ParenthesisLeft), TokenInfo (TokenInfo))
+import Lexer ( getToken
+             , Token(ParenthesisLeft, ParenthesisRight, BraceLeft, BraceRight)
+             , TokenInfo(TokenInfo)
+             )
+
+testSingleChar char token string = assertEqual (string ++ " with garbage")
+  (Right (TokenInfo 0 token, "aboba")) (getToken (char:"aboba") 0)
 
 singleCharOperatorsTest = TestCase $ do
-  assertEqual "left parenthesis with garbage"
-    (Right (TokenInfo 0 ParenthesisLeft , "aboba")) (getToken "(aboba" 0)
+  testSingleChar '(' ParenthesisLeft "left parenthesis"
+  testSingleChar ')' ParenthesisRight  "right parenthesis"
+  testSingleChar '{' BraceLeft "left brace"
+  testSingleChar '}' BraceRight "right brace"
 
--- single char, no need to test hard:
- 
--- ParenthesisLeft '('
--- ParenthesisRight ')'
--- BraceLeft '{'
--- BraceRight '}'
 -- BracketLeft '['
 -- BracketRight ']'
 -- Semicolon ';'
