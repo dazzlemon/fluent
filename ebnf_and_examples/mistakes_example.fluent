@@ -1,0 +1,50 @@
+# syntax error
+#      here
+# should be
+#      <-
+forEach = (list callback) {
+	callback(list:val);
+	match list:next {
+		NULL -> NULL;
+		_ -> forEach(list:next callback);
+	}
+};
+
+# lexic error
+map <- (list callback) {
+# here
+# should be
+# match
+	math list {
+		[val = _ next = _] -> [val = callback(list:val) next = map(list:next)];
+		_ -> NULL;
+	}
+};
+
+range <- (min max) {
+	match lessOrEqual(min max) {# predefined
+# syntax error
+		true  -> [val: min next: range(add(1 min) max)];
+#		true  -> [val = min next = range(add(1 min) max)];
+		false -> NULL;
+	}
+};
+
+fizzBuzz <- (n) {
+	match [m3 = mod(n 3) m5 = mod(n 5)] {# predefined
+		[m3 = 0 m5 = 0] -> 'fizzBuzz';
+		[m3 = 0 m5 = _] -> 'fizz';
+		[m3 = _ m5 = 0] -> 'buzz';
+		_ -> n;
+	}
+};
+
+# semantic error
+forEach(
+#    here
+# l is not initialized
+	map(l fizzBuzz)
+# below is example of correct code
+#	map(range(1 100 1) fizzBuzz)
+	print # predefined
+);
