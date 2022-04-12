@@ -50,14 +50,14 @@ data Token = Number { tokenString::String } -- 125; 123.45; -1; -12.3; .1; -.23
            | NamedTuppleAccessOperator  -- ':'
            | NamedTuppleBindingOperator -- '='
            | TokenEOF
-           deriving (Show, Data)
+           deriving (Show, Data, Eq)
 
-data TokenInfo = TokenInfo { position::Int, token::Token }
+data TokenInfo = TokenInfo { position::Int, token::Token } deriving (Eq, Show)
 data LexerError = UnknownSymbol    { errorPosition::Int }
                 | UnexpectedSymbol { errorPosition::Int
                                    , expected::String }
                 | UnexpectedEOF    { expected::String }
-                deriving (Show, Data)
+                deriving (Show, Data, Eq)
 
 charToToken :: Char -> Maybe Token
 charToToken = flip lookup [ ('(', ParenthesisLeft)
