@@ -11,7 +11,7 @@ import Data.List
 
 singleCharTokensTest = TestCase tests
   where tests = mconcat $ unknownSymbols ++ correctCases
-        
+
         chars = [ ('(', ParenthesisLeft, "left parenthesis")
                 , (')', ParenthesisRight,  "right parenthesis")
                 , ('{', BraceLeft, "left brace")
@@ -37,15 +37,11 @@ singleCharTokensTest = TestCase tests
         testUnknownSymbol char = assertEqual ("'" ++ [char] ++ "' with garbage")
           (Left (UnknownSymbol 0)) (getToken (char:"aboba") 0)
 
-testNumber numStr = assertEqual (numStr ++ " with garbage")
-  (Right (TokenInfo 0 (Number numStr), "aboba"))
-  (getToken (numStr ++ "aboba") 0)
-
 numberTest = TestCase tests
   where tests = mconcat $ correctCases
                        ++ unexpectedSymbols
                        ++ unexpectedEOFs
-        
+
         correctCases = map testNumber numbers
         numbers = positive ++ negative
         positive = [ "12345"
@@ -53,6 +49,9 @@ numberTest = TestCase tests
                    , ".1234"
                    ]
         negative = map ('-':) positive
+        testNumber numStr = assertEqual (numStr ++ " with garbage")
+          (Right (TokenInfo 0 (Number numStr), "aboba"))
+          (getToken (numStr ++ "aboba") 0)
 
         -- UnknownSymbol can't happen because it will be treated as
         -- either UnknownSymbol or end of token
@@ -96,9 +95,14 @@ numberTest = TestCase tests
         insertAt n x xs = ls ++ (x:rs)
           where (ls, rs) = splitAt n xs
 
--- StringLiteral
--- " 'Shsntbbtns' "
--- " ' tntn" -> UnexpectedEOF
+stringLiteralTests = TestCase tests
+  where tests = mplus good unexpectedEOF
+        good = assertEqual " 'Shsntbbtns' with garbage"
+          (Right (TokenInfo 0 (StringLiteral "Shsntbbtns"), "aboba"))
+          (getToken "'Shsntbbtns'aboba" 0)
+        unexpectedEOF = assertEqual "'Shsntbbtns"
+          (Left $ UnexpectedEOF "\'")
+          (getToken "'Shsntbbtns" 0)
 
 -- Id "aboba_228" "match127" "NULLify"
 
@@ -117,6 +121,7 @@ numberTest = TestCase tests
 
 tests = TestList [ TestLabel "singleCharTokensTest" singleCharTokensTest
                  , TestLabel "numberTest" numberTest
+                 , TestLabel "stringLiteralTests" stringLiteralTests
                  ]
 
 main = runTestTTAndExit tests
