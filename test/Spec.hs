@@ -2,7 +2,7 @@ import Test.HUnit
     ( assertEqual
     , runTestTT
     , Counts(errors, failures)
-    , Test(TestLabel, TestCase, TestList)
+    , Test(TestLabel, TestCase, TestList), runTestTTAndExit
     )
 import System.Exit ( exitFailure, exitSuccess )
 import Lexer ( getToken, Token(..), TokenInfo(TokenInfo), LexerError(..) )
@@ -119,9 +119,4 @@ tests = TestList [ TestLabel "singleCharTokensTest" singleCharTokensTest
                  , TestLabel "numberTest" numberTest
                  ]
 
-main :: IO ()
-main = do
-  counts <- runTestTT tests
-  if errors counts + failures counts == 0
-    then exitSuccess
-    else exitFailure
+main = runTestTTAndExit tests
