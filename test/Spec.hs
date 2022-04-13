@@ -44,7 +44,7 @@ testNumber numStr = assertEqual (numStr ++ " with garbage")
 numberTest = TestCase tests
   where tests = mconcat $ correctCases
                        ++ unexpectedSymbols
-                      --  ++ unexpectedEOFs
+                       ++ unexpectedEOFs
         
         correctCases = map testNumber numbers
         numbers = positive ++ negative
@@ -77,12 +77,19 @@ numberTest = TestCase tests
           (Left (UnexpectedSymbol 2 "numeric or '>'"))
           (getToken (str ++ "aboba") 0)
 
-        -- TODO
-        -- unexpectedEOFs = unexpectedEOFsAfterDash ++ unexpectedEOFsAfterDot
+        unexpectedEOFs = unexpectedEOFAfterDash:unexpectedEOFsAfterDot
         -- UnexpectedEOF happens if EOF is just after '.'
-        -- unexpectedEOFsAfterDotStrs = 
-
+        unexpectedEOFsAfterDotStrs = map ((++".") . takeWhile (/= '.'))
+                                   $ filter ('.' `elem`) numbers
+        unexpectedEOFsAfterDot = map testUnexpectedEOFsAfterDotStrs
+          unexpectedEOFsAfterDotStrs
+        testUnexpectedEOFsAfterDotStrs str = assertEqual str
+          (Left (UnexpectedEOF "numeric"))
+          (getToken str 0)
         -- or just after '-'
+        unexpectedEOFAfterDash = assertEqual "\"-\" - UnexpectedEOF"
+          (Left (UnexpectedEOF "numeric or '>'"))
+          (getToken "-" 0)
 
         insertAfter x y xs = insertAt (n + 1) y xs
           where Just n = elemIndex x xs
