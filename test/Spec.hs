@@ -104,7 +104,18 @@ stringLiteralTests = TestCase tests
           (Left $ UnexpectedEOF "\'")
           (getToken "'Shsntbbtns" 0)
 
--- Id "aboba_228" "match127" "NULLify"
+idTests = TestCase tests
+  where tests = mplus normal collision
+        normal = assertEqual "id 'abobA_228' with garbage"
+          (Right (TokenInfo 0 (Id "abobA_228"), " arstasrta"))
+          (getToken "abobA_228 arstasrta" 0)
+        collision = mplus collisionMatch collisionNull
+        collisionMatch = assertEqual "id 'match127' with garbage"
+          (Right (TokenInfo 0 (Id "match127"), " arstasrta"))
+          (getToken "match127 arstasrta" 0)
+        collisionNull = assertEqual "id 'NULLify' with garbage"
+          (Right (TokenInfo 0 (Id "NULLify"), " arstasrta"))
+          (getToken "NULLify arstasrta" 0)
 
 -- AssignmentOperator "<-"
 -- "<" -> UnexpectedEOF
@@ -122,6 +133,7 @@ stringLiteralTests = TestCase tests
 tests = TestList [ TestLabel "singleCharTokensTest" singleCharTokensTest
                  , TestLabel "numberTest" numberTest
                  , TestLabel "stringLiteralTests" stringLiteralTests
+                 , TestLabel "idTests" idTests
                  ]
 
 main = runTestTTAndExit tests
