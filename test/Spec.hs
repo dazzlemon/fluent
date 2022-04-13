@@ -117,9 +117,17 @@ idTests = TestCase tests
           (Right (TokenInfo 0 (Id "NULLify"), " arstasrta"))
           (getToken "NULLify arstasrta" 0)
 
--- AssignmentOperator "<-"
--- "<" -> UnexpectedEOF
--- "<x" -> UnexpectedSymbol
+assignmentOperatorTest = TestCase tests
+  where tests = mconcat [good, unexpectedEOF, unexpectedSymbol]
+        good = assertEqual "<- with garbage"
+          (Right (TokenInfo 0 AssignmentOperator, "saor"))
+          (getToken "<-saor" 0) 
+        unexpectedEOF = assertEqual "'<' without '-'"
+          (Left (UnexpectedEOF "-"))
+          (getToken "<" 0)
+        unexpectedSymbol = assertEqual "'<' with 'x'"
+          (Left (UnexpectedSymbol 1 "-"))
+          (getToken "<x" 0)
 
 -- Null "NULL"
 -- MatchKeyword "match"
@@ -130,10 +138,13 @@ idTests = TestCase tests
 
 -- skip comments and spaces
 
-tests = TestList [ TestLabel "singleCharTokensTest" singleCharTokensTest
-                 , TestLabel "numberTest" numberTest
-                 , TestLabel "stringLiteralTests" stringLiteralTests
-                 , TestLabel "idTests" idTests
-                 ]
+tests = TestList testLabels
+  where testLabels = map (uncurry TestLabel) tests
+        tests = [ ("singleCharTokensTest", singleCharTokensTest)
+                , ("numberTest", numberTest)
+                , ("stringLiteralTests", stringLiteralTests)
+                , ("idTests", idTests)
+                , ("assignmentOperatorTest", assignmentOperatorTest)
+                ]
 
 main = runTestTTAndExit tests
