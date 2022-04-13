@@ -89,23 +89,6 @@ numberTest = TestCase tests
         insertAt n x xs = ls ++ (x:rs)
           where (ls, rs) = splitAt n xs
 
--- Number
--- "1234.x567" -> UnexpectedSymbol
--- "1234." -> UnexpectedEOF
-
--- ".x" -> UnexpectedSymbol
--- "." -> UnexpectedEOF
-
--- "-x" -> UnexpectedSymbol
--- "-" -> UnexpectedEOF
-
--- "-1234.x" -> UnexpectedSymbol
--- "-1234." -> UnexpectedEOF
-
--- "-.x" -> UnexpectedSymbol
--- "-." -> UnexpectedEOF
--- "-.1234"
-
 -- StringLiteral
 -- " 'Shsntbbtns' "
 -- " ' tntn" -> UnexpectedEOF
