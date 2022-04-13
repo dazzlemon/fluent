@@ -130,8 +130,14 @@ assignmentOperatorTest = TestCase tests
           (getToken "<x" 0)
 
 -- only correct cases tested because collisions are tested in idTests
--- Null "NULL"
--- MatchKeyword "match"
+matchAndNullTests = TestCase tests
+  where tests = mplus nullTest matchTest
+        nullTest = assertEqual "match keyword with garbage"
+          (Right (TokenInfo 0 MatchKeyword, "{}aboba"))
+          (getToken "match{}aboba" 0)
+        matchTest = assertEqual "NULL literal with garbage"
+          (Right (TokenInfo 0 Null, "{}aboba"))
+          (getToken "NULL{}aboba" 0)
 
 -- only correct case tested
 -- because incorrect cases are the same as in negative numbers
@@ -146,6 +152,7 @@ tests = TestList testLabels
                 , ("stringLiteralTests", stringLiteralTests)
                 , ("idTests", idTests)
                 , ("assignmentOperatorTest", assignmentOperatorTest)
+                , ("matchAndNullTests", matchAndNullTests)
                 ]
 
 main = runTestTTAndExit tests
