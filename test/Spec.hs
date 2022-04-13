@@ -141,9 +141,20 @@ matchAndNullTests = TestCase tests
 
 -- only correct case tested
 -- because incorrect cases are the same as in negative numbers
--- MatchArrow "->" same as negative numbers
+matchArrowTest = TestCase $ assertEqual "matchArrow '->' with garbage"
+  (Right (TokenInfo 0 MatchArrow, "{}aboba"))
+  (getToken "->{}aboba" 0)
 
--- TODO: skip comments and spaces
+-- only test for id because others work basically the same
+-- skip comments and spaces + correct position
+skipTest = TestCase tests
+  where tests = mplus idComment idSpaces
+        idComment = assertEqual "id after comment"
+          (Right (TokenInfo 12 (Id "abobaId"), ""))
+          (getToken "#taorstarst\nabobaId" 0)
+        idSpaces = assertEqual "id after spaces"
+          (Right (TokenInfo 5 (Id "abobaId"), ""))
+          (getToken "  \n  abobaId" 0)
 
 tests = TestList testLabels
   where testLabels = map (uncurry TestLabel) tests
@@ -153,6 +164,8 @@ tests = TestList testLabels
                 , ("idTests", idTests)
                 , ("assignmentOperatorTest", assignmentOperatorTest)
                 , ("matchAndNullTests", matchAndNullTests)
+                , ("matchArrowTest", matchArrowTest)
+                , ("skipTest", skipTest)
                 ]
 
 main = runTestTTAndExit tests
