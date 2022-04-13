@@ -7,16 +7,12 @@ import Test.HUnit
 import System.Exit ( exitFailure, exitSuccess )
 import Lexer ( getToken, Token(..), TokenInfo(TokenInfo), LexerError(..) )
 import Control.Monad
-import Control.Applicative ((<|>))
-
-testSingleChar (char, token, string) = assertEqual (string ++ " with garbage")
-  (Right (TokenInfo 0 token, "aboba")) (getToken (char:"aboba") 0)
-
-testUnknownSymbol char = assertEqual ("'" ++ [char] ++ "' with garbage")
-  (Left (UnknownSymbol 0)) (getToken (char:"aboba") 0)
+import Data.List
 
 singleCharTokensTest = TestCase tests
-  where chars = [ ('(', ParenthesisLeft, "left parenthesis")
+  where tests = mconcat $ unknownSymbols ++ correctCases
+        
+        chars = [ ('(', ParenthesisLeft, "left parenthesis")
                 , (')', ParenthesisRight,  "right parenthesis")
                 , ('{', BraceLeft, "left brace")
                 , ('}', BraceRight, "right brace")
@@ -30,28 +26,79 @@ singleCharTokensTest = TestCase tests
                     "named tupple binding operator")
                 ]
         correctCases = map testSingleChar chars
+        testSingleChar (char, token, string) = assertEqual
+          (string ++ " with garbage")
+          (Right (TokenInfo 0 token, "aboba")) (getToken (char:"aboba") 0)
+
         -- few test for UnknownSymbol,
         -- basically the only error that can happen
         -- when checking single character tokens
-        unexpectedSymbols = map testUnknownSymbol "!@$%^&*"
-        tests = mconcat $ unexpectedSymbols ++ correctCases
+        unknownSymbols = map testUnknownSymbol "!@$%^&*"
+        testUnknownSymbol char = assertEqual ("'" ++ [char] ++ "' with garbage")
+          (Left (UnknownSymbol 0)) (getToken (char:"aboba") 0)
+
+testNumber numStr = assertEqual (numStr ++ " with garbage")
+  (Right (TokenInfo 0 (Number numStr), "aboba"))
+  (getToken (numStr ++ "aboba") 0)
+
+numberTest = TestCase tests
+  where tests = mconcat $ correctCases
+                       ++ unexpectedSymbols
+                      --  ++ unexpectedEOFs
+        
+        correctCases = map testNumber numbers
+        numbers = positive ++ negative
+        positive = [ "12345"
+                   , "1234.567"
+                   , ".1234"
+                   ]
+        negative = map ('-':) positive
+
+        -- UnknownSymbol can't happen because it will be treated as
+        -- either UnknownSymbol or end of token
+
+        unexpectedSymbols = unexpectedSymbolsAfterDot
+                         ++ unexpectedSymbolsAfterDash
+        -- UnexpectedSymbol happens on non numeric symbols after '.'
+        unexpectedSymbolsAfterDotStrs = map (insertAfter '.' 'x')
+                                      $ filter ('.' `elem`) numbers
+        unexpectedSymbolsAfterDot = map testUnexpectedSymbolsAfterDot
+          unexpectedSymbolsAfterDotStrs
+        testUnexpectedSymbolsAfterDot str = assertEqual (str ++ " with garbage")
+          (Left (UnexpectedSymbol (n + 1) "numeric"))
+          (getToken (str ++ "aboba") 0)
+          where Just n = elemIndex '.' str
+        -- or after '-' (numerics or '>' are expected)
+        unexpectedSymbolsAfterDashStrs = map (insertAt 1 'x') negative
+        unexpectedSymbolsAfterDash = map testUnexpectedSymbolsAfterDash
+          unexpectedSymbolsAfterDashStrs
+        testUnexpectedSymbolsAfterDash str = assertEqual
+          (str ++ " with garbage")
+          (Left (UnexpectedSymbol 2 "numeric or '>'"))
+          (getToken (str ++ "aboba") 0)
+
+        -- TODO
+        -- unexpectedEOFs = unexpectedEOFsAfterDash ++ unexpectedEOFsAfterDot
+        -- UnexpectedEOF happens if EOF is just after '.'
+        -- unexpectedEOFsAfterDotStrs = 
+
+        -- or just after '-'
+
+        insertAfter x y xs = insertAt (n + 1) y xs
+          where Just n = elemIndex x xs
+        insertAt n x xs = ls ++ (x:rs)
+          where (ls, rs) = splitAt n xs
 
 -- Number
--- "12345"
-
--- "1234.567"
 -- "1234.x567" -> UnexpectedSymbol
 -- "1234." -> UnexpectedEOF
 
--- ".1234"
 -- ".x" -> UnexpectedSymbol
 -- "." -> UnexpectedEOF
 
--- "-12345"
 -- "-x" -> UnexpectedSymbol
 -- "-" -> UnexpectedEOF
 
--- "-1234.567"
 -- "-1234.x" -> UnexpectedSymbol
 -- "-1234." -> UnexpectedEOF
 
@@ -78,7 +125,9 @@ singleCharTokensTest = TestCase tests
 
 -- skip comments and spaces
 
-tests = TestList [TestLabel "singleCharTokensTest" singleCharTokensTest]
+tests = TestList [ TestLabel "singleCharTokensTest" singleCharTokensTest
+                 , TestLabel "numberTest" numberTest
+                 ]
 
 main :: IO ()
 main = do

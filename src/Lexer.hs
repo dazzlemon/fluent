@@ -89,10 +89,12 @@ getToken (firstChar:code) position
       -- don't care for the position, because it starts where we said it to
       Right (TokenInfo _ (Number positive), rest) ->
         Right (TokenInfo position (Number ('-':positive)), rest)
-      Left (UnexpectedSymbol position' err) ->
-        Left (UnexpectedSymbol position' (err ++ suffix))
+      -- after '.'
+      err@(Left _) -> err
+      -- after '-'
       _ -> Left (UnexpectedSymbol position ("numeric" ++ suffix))
-    Just x -> Left (UnexpectedSymbol (position + 1) ("numeric" ++ suffix))
+    -- +1 -> is '-'; +2 is after '-'
+    Just x -> Left (UnexpectedSymbol (position + 2) ("numeric" ++ suffix))
     _ -> Left $ UnexpectedEOF "numeric or '>'"
   | firstChar == '#' = case span (/= '\n') code of
     -- +2 for '\n' and '#'
