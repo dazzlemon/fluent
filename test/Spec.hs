@@ -129,14 +129,15 @@ assignmentOperatorTest = TestCase tests
           (Left (UnexpectedSymbol 1 "-"))
           (getToken "<x" 0)
 
+-- only correct cases tested because collisions are tested in idTests
 -- Null "NULL"
 -- MatchKeyword "match"
 
+-- only correct case tested
+-- because incorrect cases are the same as in negative numbers
 -- MatchArrow "->" same as negative numbers
 
--- UnknownSymbol is triggered when encountered a symbol that is not in alphabet
-
--- skip comments and spaces
+-- TODO: skip comments and spaces
 
 tests = TestList testLabels
   where testLabels = map (uncurry TestLabel) tests
