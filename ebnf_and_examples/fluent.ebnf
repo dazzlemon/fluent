@@ -53,6 +53,6 @@ patternMatching ::= 'match' expr '{'
 # fun(arg1 a2)
 functionCall ::= id '(' {expr} ')'
 
-expr ::= number | string | id | functionCall | '_' | "NULL" | namedTupleAcess | lambdaDef
+expr ::= number | string | id | functionCall | '_' | "NULL" | namedTupleAcess | lambdaDef | namedTuple | tuple
 command ::= assignment | functionCall | patternMatching
 program ::= { command ';'}
