@@ -27,6 +27,7 @@ library
   exposed-modules:
       Lexer
       ListPadding
+      Parser
   other-modules:
       Paths_fluent
   hs-source-dirs:
