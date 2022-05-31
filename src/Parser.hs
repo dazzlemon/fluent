@@ -1,7 +1,11 @@
+{-# LANGUAGE DeriveDataTypeable #-}
+module Parser where
+
 import Lexer
 import Data.List (partition, maximumBy, minimumBy)
 import Data.Either (isLeft)
 import Data.Function (on)
+import Data.Data (Typeable, Data)
 
 -- program ::= { command ';'}
 type Program = [Expr]
@@ -39,6 +43,7 @@ data Expr = ExprNumber { str::String }
 -- namedTuple ::= '[' {namedTupleField} ']'
 					| NamedTuple { keyValuePairs::[(Expr, Expr)] }
 					| Empty -- kinda like TokenEOF
+					deriving (Show, Data, Eq)
 
 data ParserError = ParserError
 --               tokens  -> Either (unexpectedTokenOffset, err) (subAST, rest)

@@ -4,6 +4,7 @@ import Lexer
 import Control.Monad ( when )
 import System.Exit (exitFailure)
 import ListPadding (rpad, lpad)
+import Parser
 
 -- main = interact (show . lexer) -- normal version
 main = do -- pretty print version
@@ -34,9 +35,13 @@ main = do -- pretty print version
                                      $ take offset code) -- drop other lines
             charInLinePos = offset - lineStart
             lineNumber = length linesStarts
-    Right tokenList -> putStr
-                     $ showTable
-                     $ tokenInfoListToTable tokenList
+    Right tokenList -> do
+      putStr $ showTable
+             $ tokenInfoListToTable tokenList
+      case parser tokens of
+        Right commands -> print commands
+        _ -> return ()
+      where tokens = map token tokenList
 
 tokenInfoListToTable :: [TokenInfo] -> [[String]]
 tokenInfoListToTable = map tokenInfoToRow
