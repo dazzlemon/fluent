@@ -2,8 +2,8 @@
 module Parser where
 
 import Lexer
-import Data.List (partition, maximumBy, minimumBy)
-import Data.Either (isLeft)
+import Data.List (maximumBy, minimumBy)
+import Data.Either (partitionEithers)
 import Data.Function (on)
 import Data.Data (Typeable, Data)
 
@@ -74,10 +74,7 @@ parseCommand tokens = case (parseErrors, parseGood) of
                      , parsePatternMatching
                      ]
 	      parseResultsEither = map ($ tokens) subparsers
-	      (parseResultsLeft, parseResultsRight) =
-					partition isLeft parseResultsEither
-	      parseErrors = map (\(Left l) -> l) parseResultsLeft
-	      parseGood   = map (\(Right r) -> r) parseResultsLeft
+	      (parseErrors, parseGood) = partitionEithers parseResultsEither
 	      furthestError = maximumBy (compare `on` fst) parseErrors
 	      furthestGood = minimumBy (compare `on` (length . snd)) parseGood
 	      furthestGoodDist = ((-) `on` length) tokens $ snd furthestGood
@@ -132,10 +129,7 @@ parseExpr tokens = case (parseErrors, parseGood) of
                      , parseTuple
                      ]
 	      parseResultsEither = map ($ tokens) subparsers
-	      (parseResultsLeft, parseResultsRight) =
-					partition isLeft parseResultsEither
-	      parseErrors = map (\(Left l) -> l) parseResultsLeft
-	      parseGood   = map (\(Right r) -> r) parseResultsLeft
+	      (parseErrors, parseGood) = partitionEithers parseResultsEither
 	      furthestError = maximumBy (compare `on` fst) parseErrors
 	      furthestGood = minimumBy (compare `on` (length . snd)) parseGood
 	      furthestGoodDist = ((-) `on` length) tokens $ snd furthestGood
