@@ -40,7 +40,7 @@ main = do -- pretty print version
              $ tokenInfoListToTable tokenList
       case parser tokens of
         Right commands -> print commands
-        _ -> return ()
+        Left (pos, err) -> putStrLn $ "parser error at " ++ show pos
       where tokens = map token tokenList
 
 tokenInfoListToTable :: [TokenInfo] -> [[String]]

@@ -49,15 +49,16 @@ data ParserError = ParserError
 --               tokens  -> Either (unexpectedTokenOffset, err) (subAST, rest)
 type Subparser = [Token] -> Either (Int,           ParserError) (Expr, [Token])
  
-parser :: [Token] -> Either ParserError Program
+parser :: [Token] -> Either (Int, ParserError) Program
 parser tokens = parser' tokens []
 
 -- program ::= { command ';'}
-parser' :: [Token] -> Program -> Either ParserError Program
+parser' :: [Token] -> Program -> Either (Int, ParserError) Program
 parser' tokens commands = case parseCommand tokens of
 	Right (command, []) -> Right (commands ++ [command])
 	Right (command, Semicolon:rest) -> parser' rest (commands ++ [command])
-	_ -> Left ParserError
+	Left err -> Left err
+	_ -> Left (0, ParserError)
 
 -- command ::= assignment | functionCall | patternMatching
 parseCommand :: Subparser
