@@ -39,9 +39,16 @@ main = do -- pretty print version
       putStr $ showTable
              $ tokenInfoListToTable tokenList
       case parser tokens of
-        Right commands -> mapM_ print commands
+        Right commands -> mapM_ (printExpr 0) commands
         Left (pos, err) -> putStrLn $ "parser error at " ++ show pos ++ ": " ++ show err
       where tokens = map token tokenList
+            printExpr n e = case e of
+              Assignment lhs rhs -> do
+                putStrLn $ replicate n '\t' ++ "assignment:"
+                printExpr (n + 1) lhs
+                printExpr (n + 1) rhs
+              ExprId str -> putStrLn $ replicate n '\t' ++ "id: " ++ str
+              _ -> putStrLn $ replicate n '\t' ++ show e
 
 tokenInfoListToTable :: [TokenInfo] -> [[String]]
 tokenInfoListToTable = map tokenInfoToRow
