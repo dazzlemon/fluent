@@ -45,7 +45,8 @@ data Expr = ExprNumber { str::String }
 					| Empty -- kinda like TokenEOF
 					deriving (Show, Data, Eq)
 
-data ParserError = ParserError
+newtype ParserError = ParserError String deriving (Show, Data, Eq)
+
 --               tokens  -> Either (unexpectedTokenOffset, err) (subAST, rest)
 type Subparser = [Token] -> Either (Int,           ParserError) (Expr, [Token])
  
@@ -55,10 +56,10 @@ parser tokens = parser' tokens []
 -- program ::= { command ';'}
 parser' :: [Token] -> Program -> Either (Int, ParserError) Program
 parser' tokens commands = case parseCommand tokens of
-	Right (command, []) -> Right (commands ++ [command])
+	Right (command, [Semicolon]) -> Right (commands ++ [command])
 	Right (command, Semicolon:rest) -> parser' rest (commands ++ [command])
 	Left err -> Left err
-	_ -> Left (0, ParserError)
+	_ -> Left (0, ParserError "parser' error")
 
 -- command ::= assignment | functionCall | patternMatching
 parseCommand :: Subparser
@@ -92,13 +93,13 @@ parseAssignment (Id string:AssignmentOperator:rest) = case parseExpr rest of
 
 -- functionCall ::= id '(' {expr} ')'
 parseFunctionCall :: Subparser
-parseFunctionCall _ = Left (0, ParserError) -- TODO: unimplemented
+parseFunctionCall _ = Left (0, ParserError "parseFunctionCall unimplemented") -- TODO: unimplemented
 
 -- patternMatching ::= 'match' expr '{'
 -- 	{expr '->' expr ';'}
 -- 	'_' '->' expr ';' '}'
 parsePatternMatching :: Subparser
-parsePatternMatching _ = Left (0, ParserError) -- TODO: unimplemented
+parsePatternMatching _ = Left (0, ParserError "parsePatternMatching unimplemented") -- TODO: unimplemented
 
 -- expr ::= number
 --        | string
@@ -111,12 +112,12 @@ parsePatternMatching _ = Left (0, ParserError) -- TODO: unimplemented
 --        | namedTuple
 --        | tuple
 parseExpr :: Subparser
-parseExpr [] = Left (0, ParserError)
+parseExpr [] = Left (0, ParserError "parseExpr empty")
 parseExpr tokens = case (parseErrors, parseGood) of
 	-- only errors from complex expressions ->
 	-- if error is on first token we might still have singleTokenExpr
 	(_ , []) -> case singleTokenExpr of
-		Just expr | fst furthestError == 1 -> Right (expr, tail tokens)
+		Just expr | fst furthestError == 0 -> Right (expr, tail tokens)
 		_ -> Left furthestError
 	-- no errors -> furthest good
 	([], _ ) -> Right furthestGood
@@ -148,18 +149,18 @@ parseExpr tokens = case (parseErrors, parseGood) of
 
 -- namedTupleAcess ::= id ':' id
 parseNamedTupleAcess :: Subparser
-parseNamedTupleAcess _ = Left (0, ParserError) -- TODO: unimplemented
+parseNamedTupleAcess _ = Left (0, ParserError "parseNamedTupleAcess unimplemented") -- TODO: unimplemented
 
 -- lambdaDef ::= '(' {id} ')' 
 -- 	'{' { command ';'} '}'
 parseLambdaDef :: Subparser
-parseLambdaDef _ = Left (0, ParserError) -- TODO: unimplemented
+parseLambdaDef _ = Left (0, ParserError "parseLambdaDef unimplemented") -- TODO: unimplemented
 
 -- namedTuple ::= '[' {namedTupleField} ']'
 -- namedTupleAcess ::= id ':' id
 parseNamedTuple :: Subparser
-parseNamedTuple _ = Left (0, ParserError) -- TODO: unimplemented
+parseNamedTuple _ = Left (0, ParserError "parseNamedTuple unimplemented") -- TODO: unimplemented
 
 -- tuple ::= '[' {expr} ']'
 parseTuple :: Subparser
-parseTuple _ = Left (0, ParserError) -- TODO: unimplemented
+parseTuple _ = Left (0, ParserError "parseTuple unimplemented") -- TODO: unimplemented
