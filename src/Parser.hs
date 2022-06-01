@@ -62,6 +62,7 @@ parser' pos commands tokens = case parseCommand pos tokens of
 	Right (command, Semicolon:rest) ->
 		parser' (pos + length tokens - length rest) (commands ++ [command]) rest
 	Left err -> Left err
+	-- Right what -> Left (pos, ParserError $ "parseCommand returned" ++ show what)
 	_ -> Left (pos, ParserError "parser' error")
 
 -- command ::= assignment | functionCall | patternMatching
@@ -101,7 +102,7 @@ parseFunctionCall pos [] = Left (pos, ParserError "parseExpr empty")
 parseFunctionCall pos (Id strId:ParenthesisLeft:rest) =
 	case parseFunctionArgs pos rest of
 		Right (args, rest') ->
-			Right (FunctionCall (ExprId strId) args, tail rest') -- head rest' = ')'
+			Right (FunctionCall (ExprId strId) args, rest')
 		Left err -> Left err
 parseFunctionCall pos tokens = Left (pos, ParserError "parseFunctionCall error")
 

@@ -31,12 +31,14 @@ main = do -- pretty print version
           putStr $ showErr code (position $ tokenList !! pos)
       where tokens = map token tokenList
             printExpr n e = case e of
-              Assignment lhs rhs -> do
-                putStrLn $ replicate n '\t' ++ "assignment:"
-                printExpr (n + 1) lhs
+              Assignment (ExprId lhs) rhs -> do
+                putStrLn $ replicate n '\t' ++ "assignment to `" ++ lhs ++ "`:"
                 printExpr (n + 1) rhs
               ExprId str -> putStrLn $ replicate n '\t' ++ "id: " ++ str
               ExprNumber str -> putStrLn $ replicate n '\t' ++ "number: " ++ str
+              FunctionCall (ExprId fname) args -> do
+                putStrLn $ replicate n '\t' ++ "function call `" ++ fname ++ "`, args:"
+                mapM_ (printExpr (n + 1)) args
               _ -> putStrLn $ replicate n '\t' ++ show e
 
 showErr code offset = showTable [ [lineIndexStr, " | ", line]
