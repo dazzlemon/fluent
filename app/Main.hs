@@ -14,33 +14,21 @@ main = do -- pretty print version
       putStrLn $ "Error: " ++ constrString
       -- UnexpectedEOF only happens at the end of file))
       when (constrString /= "UnexpectedEOF") $
-        putStr $ showTable [ [lineIndexStr, " | ", line]
-                           , ["",           "",    arrow]
-                           ]
+        putStr $ showErr code (errorPosition err)
       when (constrString == "UnexpectedSymbol") $
         putStrLn $ expected err
       when (constrString == "UnexpectedEOF") $
         putStrLn $ expected err
       exitFailure
       where constrString = show $ toConstr err
-            lineIndexStr = show $ lineNumber + 1 -- 0 based + 1
-            lineStart = last linesStarts
-            line = takeWhile (/= '\n')
-                 $ drop lineStart code -- drop lines before 
-            arrow = lpad (charInLinePos + 1) ' ' "^"
-            offset = errorPosition err
-            linesStarts = 0:map (+1) ( drop 1 -- no line after last '\n'
-                                              -- 0 is start of first line
-                                     $ elemIndices '\n'
-                                     $ take offset code) -- drop other lines
-            charInLinePos = offset - lineStart
-            lineNumber = length linesStarts
     Right tokenList -> do
       putStr $ showTable
              $ tokenInfoListToTable tokenList
       case parser tokens of
         Right commands -> mapM_ (printExpr 0) commands
-        Left (pos, err) -> putStrLn $ "parser error at " ++ show pos ++ ": " ++ show err
+        Left (pos, err) -> do
+          putStrLn $ "parser error at " ++ show pos ++ ": " ++ show err
+          putStr $ showErr code (position $ tokenList !! pos)
       where tokens = map token tokenList
             printExpr n e = case e of
               Assignment lhs rhs -> do
@@ -50,6 +38,21 @@ main = do -- pretty print version
               ExprId str -> putStrLn $ replicate n '\t' ++ "id: " ++ str
               ExprNumber str -> putStrLn $ replicate n '\t' ++ "number: " ++ str
               _ -> putStrLn $ replicate n '\t' ++ show e
+
+showErr code offset = showTable [ [lineIndexStr, " | ", line]
+                                , ["",           "",    arrow]
+                                ]
+  where lineIndexStr = show $ lineNumber + 1 -- 0 based + 1
+        lineNumber = length linesStarts
+        lineStart = last linesStarts
+        line = takeWhile (/= '\n')
+             $ drop lineStart code -- drop lines before
+        arrow = lpad (charInLinePos + 1) ' ' "^"
+        linesStarts = 0:map (+1) ( drop 1 -- no line after last '\n'
+                                          -- 0 is start of first line
+                                 $ elemIndices '\n'
+                                 $ take offset code) -- drop other lines
+        charInLinePos = offset - lineStart
 
 tokenInfoListToTable :: [TokenInfo] -> [[String]]
 tokenInfoListToTable = map tokenInfoToRow
