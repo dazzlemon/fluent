@@ -39,7 +39,7 @@ main = do -- pretty print version
       putStr $ showTable
              $ tokenInfoListToTable tokenList
       case parser tokens of
-        Right commands -> print commands
+        Right commands -> mapM_ print commands
         Left (pos, err) -> putStrLn $ "parser error at " ++ show pos ++ ": " ++ show err
       where tokens = map token tokenList
 
