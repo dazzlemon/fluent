@@ -25,7 +25,9 @@ main = do -- pretty print version
       putStr $ showTable
              $ tokenInfoListToTable tokenList
       case parser tokens of
-        Right commands -> mapM_ (printExpr 0) commands
+        Right commands -> do
+          putStrLn ""
+          mapM_ (printExpr 0) commands
         Left (pos, err) -> do
           putStrLn $ "parser error at " ++ show pos ++ ": " ++ show err
           putStr $ showErr code (position $ tokenList !! pos)
