@@ -47,24 +47,27 @@ data Expr = ExprNumber { str::String }
 
 newtype ParserError = ParserError String deriving (Show, Data, Eq)
 
---               tokens  -> Either (unexpectedTokenOffset, err) (subAST, rest)
-type Subparser = [Token] -> Either (Int,           ParserError) (Expr, [Token])
+--               pos    tokens
+type Subparser = Int -> [Token]
+--                      (unexpectedTokenOffset, err) (subAST, rest)
+              -> Either (Int,           ParserError) (Expr, [Token])
  
 parser :: [Token] -> Either (Int, ParserError) Program
-parser tokens = parser' tokens []
+parser = parser' 0 []
 
 -- program ::= { command ';'}
-parser' :: [Token] -> Program -> Either (Int, ParserError) Program
-parser' tokens commands = case parseCommand tokens of
+parser' :: Int -> Program -> [Token]  -> Either (Int, ParserError) Program
+parser' pos commands tokens = case parseCommand pos tokens of
 	Right (command, [Semicolon]) -> Right (commands ++ [command])
-	Right (command, Semicolon:rest) -> parser' rest (commands ++ [command])
+	Right (command, Semicolon:rest) ->
+		parser' (pos + length tokens - length rest) (commands ++ [command]) rest
 	Left err -> Left err
-	_ -> Left (0, ParserError "parser' error")
+	_ -> Left (pos, ParserError "parser' error")
 
 -- command ::= assignment | functionCall | patternMatching
 parseCommand :: Subparser
-parseCommand [] = Right (Empty, [])
-parseCommand tokens = case (parseErrors, parseGood) of
+parseCommand _ [] = Right (Empty, [])
+parseCommand pos tokens = case (parseErrors, parseGood) of
 	-- only errors -> furthest error
 	(_ , []) -> Left furthestError
 	-- no errors -> furthest good
@@ -75,11 +78,11 @@ parseCommand tokens = case (parseErrors, parseGood) of
                      , parseFunctionCall
                      , parsePatternMatching
                      ]
-	      parseResultsEither = map ($ tokens) subparsers
+	      parseResultsEither = map (\f -> f pos tokens) subparsers
 	      (parseErrors, parseGood) = partitionEithers parseResultsEither
 	      furthestError = maximumBy (compare `on` fst) parseErrors
 	      furthestGood = minimumBy (compare `on` (length . snd)) parseGood
-	      furthestGoodDist = ((-) `on` length) tokens $ snd furthestGood
+	      furthestGoodDist = ((-) `on` length) tokens (snd furthestGood) + pos
 	      furthest = if furthestGoodDist > fst furthestError
 	        then Right furthestGood
 	        else Left furthestError
@@ -87,19 +90,38 @@ parseCommand tokens = case (parseErrors, parseGood) of
 
 -- assignment ::= id "<-" expr
 parseAssignment :: Subparser
-parseAssignment (Id string:AssignmentOperator:rest) = case parseExpr rest of
-	Right (expr, rest') -> Right (Assignment (ExprId string) expr, rest')
-	Left err -> Left err
+parseAssignment pos (Id string:AssignmentOperator:rest) =
+	case parseExpr (pos + 2) rest of
+		Right (expr, rest') -> Right (Assignment (ExprId string) expr, rest')
+		Left err -> Left err
 
 -- functionCall ::= id '(' {expr} ')'
 parseFunctionCall :: Subparser
-parseFunctionCall _ = Left (0, ParserError "parseFunctionCall unimplemented") -- TODO: unimplemented
+parseFunctionCall pos [] = Left (pos, ParserError "parseExpr empty")
+parseFunctionCall pos (Id strId:ParenthesisLeft:rest) =
+	case parseFunctionArgs pos rest of
+		Right (args, rest') ->
+			Right (FunctionCall (ExprId strId) args, tail rest') -- head rest' = ')'
+		Left err -> Left err
+parseFunctionCall pos tokens = Left (pos, ParserError "parseFunctionCall error")
+
+parseFunctionArgs :: Int -> [Token]
+                  -> Either (Int, ParserError) ([Expr], [Token])
+parseFunctionArgs = parseFunctionArgs' []
+
+parseFunctionArgs' :: [Expr] -> Int -> [Token]
+                   -> Either (Int, ParserError) ([Expr], [Token])
+parseFunctionArgs' args pos (ParenthesisRight:rest) = Right (args, rest)
+parseFunctionArgs' args pos tokens = case parseExpr pos tokens of
+	Right (arg, rest) ->
+		parseFunctionArgs' (args ++ [arg]) (pos + length tokens - length rest) rest
+	Left err -> Left err
 
 -- patternMatching ::= 'match' expr '{'
 -- 	{expr '->' expr ';'}
 -- 	'_' '->' expr ';' '}'
 parsePatternMatching :: Subparser
-parsePatternMatching _ = Left (0, ParserError "parsePatternMatching unimplemented") -- TODO: unimplemented
+parsePatternMatching pos _ = Left (pos, ParserError "parsePatternMatching unimplemented") -- TODO: unimplemented
 
 -- expr ::= number
 --        | string
@@ -112,12 +134,12 @@ parsePatternMatching _ = Left (0, ParserError "parsePatternMatching unimplemente
 --        | namedTuple
 --        | tuple
 parseExpr :: Subparser
-parseExpr [] = Left (0, ParserError "parseExpr empty")
-parseExpr tokens = case (parseErrors, parseGood) of
+parseExpr pos [] = Left (pos, ParserError "parseExpr empty")
+parseExpr pos tokens = case (parseErrors, parseGood) of
 	-- only errors from complex expressions ->
 	-- if error is on first token we might still have singleTokenExpr
 	(_ , []) -> case singleTokenExpr of
-		Just expr | fst furthestError == 0 -> Right (expr, tail tokens)
+		Just expr | fst furthestError == pos -> Right (expr, tail tokens)
 		_ -> Left furthestError
 	-- no errors -> furthest good
 	([], _ ) -> Right furthestGood
@@ -130,11 +152,11 @@ parseExpr tokens = case (parseErrors, parseGood) of
                      , parseNamedTuple
                      , parseTuple
                      ]
-	      parseResultsEither = map ($ tokens) subparsers
+	      parseResultsEither = map (\f -> f pos tokens) subparsers
 	      (parseErrors, parseGood) = partitionEithers parseResultsEither
 	      furthestError = maximumBy (compare `on` fst) parseErrors
 	      furthestGood = minimumBy (compare `on` (length . snd)) parseGood
-	      furthestGoodDist = ((-) `on` length) tokens $ snd furthestGood
+	      furthestGoodDist = ((-) `on` length) tokens (snd furthestGood) + pos
 	      furthest = if furthestGoodDist > fst furthestError
 	        then Right furthestGood
 	        else Left furthestError
@@ -149,18 +171,18 @@ parseExpr tokens = case (parseErrors, parseGood) of
 
 -- namedTupleAcess ::= id ':' id
 parseNamedTupleAcess :: Subparser
-parseNamedTupleAcess _ = Left (0, ParserError "parseNamedTupleAcess unimplemented") -- TODO: unimplemented
+parseNamedTupleAcess pos _ = Left (pos, ParserError "parseNamedTupleAcess unimplemented") -- TODO: unimplemented
 
 -- lambdaDef ::= '(' {id} ')' 
 -- 	'{' { command ';'} '}'
 parseLambdaDef :: Subparser
-parseLambdaDef _ = Left (0, ParserError "parseLambdaDef unimplemented") -- TODO: unimplemented
+parseLambdaDef pos _ = Left (pos, ParserError "parseLambdaDef unimplemented") -- TODO: unimplemented
 
 -- namedTuple ::= '[' {namedTupleField} ']'
 -- namedTupleAcess ::= id ':' id
 parseNamedTuple :: Subparser
-parseNamedTuple _ = Left (0, ParserError "parseNamedTuple unimplemented") -- TODO: unimplemented
+parseNamedTuple pos _ = Left (pos, ParserError "parseNamedTuple unimplemented") -- TODO: unimplemented
 
 -- tuple ::= '[' {expr} ']'
 parseTuple :: Subparser
-parseTuple _ = Left (0, ParserError "parseTuple unimplemented") -- TODO: unimplemented
+parseTuple pos _ = Left (pos, ParserError "parseTuple unimplemented") -- TODO: unimplemented

@@ -48,6 +48,7 @@ main = do -- pretty print version
                 printExpr (n + 1) lhs
                 printExpr (n + 1) rhs
               ExprId str -> putStrLn $ replicate n '\t' ++ "id: " ++ str
+              ExprNumber str -> putStrLn $ replicate n '\t' ++ "number: " ++ str
               _ -> putStrLn $ replicate n '\t' ++ show e
 
 tokenInfoListToTable :: [TokenInfo] -> [[String]]
