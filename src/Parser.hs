@@ -189,4 +189,19 @@ parseNamedTuple pos _ = Left (pos, ParserError "parseNamedTuple unimplemented") 
 
 -- tuple ::= '[' {expr} ']'
 parseTuple :: Subparser
-parseTuple pos _ = Left (pos, ParserError "parseTuple unimplemented") -- TODO: unimplemented
+parseTuple pos (BracketLeft:rest) = case parseTupleFields pos rest of
+	Right (fields, rest') -> Right (Tuple fields, rest')
+	Left err -> Left err
+parseTuple pos tokens = Left (pos, ParserError "parseTuple error")
+
+parseTupleFields :: Int -> [Token]
+                 -> Either (Int, ParserError) ([Expr], [Token])
+parseTupleFields = parseTupleFields' []
+
+parseTupleFields' :: [Expr] -> Int -> [Token]
+                  -> Either (Int, ParserError) ([Expr], [Token])
+parseTupleFields' fields pos (BracketRight:rest) = Right (fields, rest)
+parseTupleFields' fields pos tokens = case parseExpr pos tokens of
+	Right (field, rest) -> parseTupleFields'
+		(fields ++ [field]) (pos + length tokens - length rest) rest
+	Left err -> Left err

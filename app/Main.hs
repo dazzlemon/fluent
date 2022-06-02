@@ -44,6 +44,9 @@ main = do -- pretty print version
               NamedTuppleAccess (ExprId lhs) (ExprId rhs) -> do
                 putStrLn $ replicate n '\t' ++
                   "named tuple acess `" ++ lhs ++ ":" ++ rhs ++ "`"
+              Tuple fields -> do
+                putStrLn $ replicate n '\t' ++ "tuple:"
+                mapM_ (printExpr (n + 1)) fields
               _ -> putStrLn $ replicate n '\t' ++ show e
 
 showErr code offset = showTable [ [lineIndexStr, " | ", line]
