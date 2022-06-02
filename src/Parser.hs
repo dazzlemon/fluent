@@ -183,9 +183,32 @@ parseLambdaDef :: Subparser
 parseLambdaDef pos _ = Left (pos, ParserError "parseLambdaDef unimplemented") -- TODO: unimplemented
 
 -- namedTuple ::= '[' {namedTupleField} ']'
--- namedTupleAcess ::= id ':' id
+-- namedTupleField ::= id '=' expr
 parseNamedTuple :: Subparser
-parseNamedTuple pos _ = Left (pos, ParserError "parseNamedTuple unimplemented") -- TODO: unimplemented
+parseNamedTuple pos (BracketLeft:rest) = case parseNamedTupleFields pos rest of
+	Right (fields, rest') -> Right (NamedTuple fields, rest')
+	Left err -> Left err
+parseNamedTuple pos tokens = Left (pos, ParserError "parseNamedTuple error")
+
+parseNamedTupleFields :: Int -> [Token]
+                 -> Either (Int, ParserError) ([(Expr, Expr)], [Token])
+parseNamedTupleFields = parseNamedTupleFields' []
+
+parseNamedTupleFields' :: [(Expr, Expr)] -> Int -> [Token]
+                  -> Either (Int, ParserError) ([(Expr, Expr)], [Token])
+parseNamedTupleFields' fields pos (BracketRight:rest) = Right (fields, rest)
+parseNamedTupleFields' fields pos tokens = case parseNamedTupleField pos tokens of
+	Right (lhs, rhs, rest) -> parseNamedTupleFields'
+		(fields ++ [(lhs, rhs)]) (pos + length tokens - length rest) rest
+	Left err -> Left err
+
+parseNamedTupleField :: Int -> [Token]
+                     -> Either (Int, ParserError) (Expr, Expr, [Token])
+parseNamedTupleField pos (Id lhs:NamedTuppleBindingOperator:rest) =
+	case parseExpr (pos + 2) rest of
+		Right (rhs, rest') -> Right (ExprId lhs, rhs, rest')
+		Left err -> Left err
+parseNamedTupleField pos _ = Left (pos, ParserError "parseNamedTupleField error")
 
 -- tuple ::= '[' {expr} ']'
 parseTuple :: Subparser

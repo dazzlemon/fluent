@@ -47,7 +47,13 @@ main = do -- pretty print version
               Tuple fields -> do
                 putStrLn $ replicate n '\t' ++ "tuple:"
                 mapM_ (printExpr (n + 1)) fields
+              NamedTuple fields -> do
+                putStrLn $ replicate n '\t' ++ "tuple:"
+                mapM_ (printNamedTupleField (n + 1)) fields
               _ -> putStrLn $ replicate n '\t' ++ show e
+            printNamedTupleField n (ExprId lhs, rhs) = do
+              putStrLn $ replicate n '\t' ++ "field `" ++ lhs ++ "`:"
+              printExpr (n + 1) rhs
 
 showErr code offset = showTable [ [lineIndexStr, " | ", line]
                                 , ["",           "",    arrow]
