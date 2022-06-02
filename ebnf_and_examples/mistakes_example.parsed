@@ -1,0 +1,198 @@
+49  Id                         'forEach'    
+57  NamedTuppleBindingOperator              
+59  ParenthesisLeft                         
+60  Id                         'list'       
+65  Id                         'callback'   
+73  ParenthesisRight                        
+75  BraceLeft                               
+78  Id                         'callback'   
+86  ParenthesisLeft                         
+87  Id                         'list'       
+91  NamedTuppleAccessOperator               
+92  Id                         'val'        
+95  ParenthesisRight                        
+96  Semicolon                               
+99  MatchKeyword                            
+105 Id                         'list'       
+109 NamedTuppleAccessOperator               
+110 Id                         'next'       
+115 BraceLeft                               
+119 Null                                    
+124 MatchArrow                              
+127 Null                                    
+131 Semicolon                               
+135 WildCard                                
+137 MatchArrow                              
+140 Id                         'forEach'    
+147 ParenthesisLeft                         
+148 Id                         'list'       
+152 NamedTuppleAccessOperator               
+153 Id                         'next'       
+158 Id                         'callback'   
+166 ParenthesisRight                        
+167 Semicolon                               
+170 BraceRight                              
+172 BraceRight                              
+173 Semicolon                               
+190 Id                         'map'        
+194 AssignmentOperator                      
+197 ParenthesisLeft                         
+198 Id                         'list'       
+203 Id                         'callback'   
+211 ParenthesisRight                        
+213 BraceLeft                               
+243 Id                         'math'       
+248 Id                         'list'       
+253 BraceLeft                               
+257 BracketLeft                             
+258 Id                         'val'        
+262 NamedTuppleBindingOperator              
+264 WildCard                                
+266 Id                         'next'       
+271 NamedTuppleBindingOperator              
+273 WildCard                                
+274 BracketRight                            
+276 MatchArrow                              
+279 BracketLeft                             
+280 Id                         'val'        
+284 NamedTuppleBindingOperator              
+286 Id                         'callback'   
+294 ParenthesisLeft                         
+295 Id                         'list'       
+299 NamedTuppleAccessOperator               
+300 Id                         'val'        
+303 ParenthesisRight                        
+305 Id                         'next'       
+310 NamedTuppleBindingOperator              
+312 Id                         'map'        
+315 ParenthesisLeft                         
+316 Id                         'list'       
+320 NamedTuppleAccessOperator               
+321 Id                         'next'       
+325 ParenthesisRight                        
+326 BracketRight                            
+327 Semicolon                               
+331 WildCard                                
+333 MatchArrow                              
+336 Null                                    
+340 Semicolon                               
+343 BraceRight                              
+345 BraceRight                              
+346 Semicolon                               
+349 Id                         'range'      
+355 AssignmentOperator                      
+358 ParenthesisLeft                         
+359 Id                         'min'        
+363 Id                         'max'        
+366 ParenthesisRight                        
+368 BraceLeft                               
+371 MatchKeyword                            
+377 Id                         'lessOrEqual'
+388 ParenthesisLeft                         
+389 Id                         'min'        
+393 Id                         'max'        
+396 ParenthesisRight                        
+398 BraceLeft                               
+429 Id                         'true'       
+435 MatchArrow                              
+438 BracketLeft                             
+439 Id                         'val'        
+442 NamedTuppleAccessOperator               
+444 Id                         'min'        
+448 Id                         'next'       
+452 NamedTuppleAccessOperator               
+454 Id                         'range'      
+459 ParenthesisLeft                         
+460 Id                         'add'        
+463 ParenthesisLeft                         
+464 Number                     '1'          
+466 Id                         'min'        
+469 ParenthesisRight                        
+471 Id                         'max'        
+474 ParenthesisRight                        
+475 BracketRight                            
+476 Semicolon                               
+534 Id                         'false'      
+540 MatchArrow                              
+543 Null                                    
+547 Semicolon                               
+550 BraceRight                              
+552 BraceRight                              
+553 Semicolon                               
+556 Id                         'fizzBuzz'   
+565 AssignmentOperator                      
+568 ParenthesisLeft                         
+569 Id                         'n'          
+570 ParenthesisRight                        
+572 BraceLeft                               
+575 MatchKeyword                            
+581 BracketLeft                             
+582 Id                         'm3'         
+585 NamedTuppleBindingOperator              
+587 Id                         'mod'        
+590 ParenthesisLeft                         
+591 Id                         'n'          
+593 Number                     '3'          
+594 ParenthesisRight                        
+596 Id                         'm5'         
+599 NamedTuppleBindingOperator              
+601 Id                         'mod'        
+604 ParenthesisLeft                         
+605 Id                         'n'          
+607 Number                     '5'          
+608 ParenthesisRight                        
+609 BracketRight                            
+611 BraceLeft                               
+627 BracketLeft                             
+628 Id                         'm3'         
+631 NamedTuppleBindingOperator              
+633 Number                     '0'          
+635 Id                         'm5'         
+638 NamedTuppleBindingOperator              
+640 Number                     '0'          
+641 BracketRight                            
+643 MatchArrow                              
+646 StringLiteral              'fizzBuzz'   
+656 Semicolon                               
+660 BracketLeft                             
+661 Id                         'm3'         
+664 NamedTuppleBindingOperator              
+666 Number                     '0'          
+668 Id                         'm5'         
+671 NamedTuppleBindingOperator              
+673 WildCard                                
+674 BracketRight                            
+676 MatchArrow                              
+679 StringLiteral              'fizz'       
+685 Semicolon                               
+689 BracketLeft                             
+690 Id                         'm3'         
+693 NamedTuppleBindingOperator              
+695 WildCard                                
+697 Id                         'm5'         
+700 NamedTuppleBindingOperator              
+702 Number                     '0'          
+703 BracketRight                            
+705 MatchArrow                              
+708 StringLiteral              'buzz'       
+714 Semicolon                               
+718 WildCard                                
+720 MatchArrow                              
+723 Id                         'n'          
+724 Semicolon                               
+727 BraceRight                              
+729 BraceRight                              
+730 Semicolon                               
+750 Id                         'forEach'    
+757 ParenthesisLeft                         
+793 Id                         'map'        
+796 ParenthesisLeft                         
+797 Id                         'l'          
+799 Id                         'fizzBuzz'   
+807 ParenthesisRight                        
+876 Id                         'print'      
+895 ParenthesisRight                        
+896 Semicolon                               
+parser error at 0: ParserError "parsePatternMatching error"
+5  |  forEach = (list callback) {
+      ^                          
