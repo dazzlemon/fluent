@@ -41,6 +41,9 @@ main = do -- pretty print version
               FunctionCall (ExprId fname) args -> do
                 putStrLn $ replicate n '\t' ++ "function call `" ++ fname ++ "`, args:"
                 mapM_ (printExpr (n + 1)) args
+              NamedTuppleAccess (ExprId lhs) (ExprId rhs) -> do
+                putStrLn $ replicate n '\t' ++
+                  "named tuple acess `" ++ lhs ++ ":" ++ rhs ++ "`"
               _ -> putStrLn $ replicate n '\t' ++ show e
 
 showErr code offset = showTable [ [lineIndexStr, " | ", line]

@@ -172,7 +172,10 @@ parseExpr pos tokens = case (parseErrors, parseGood) of
 
 -- namedTupleAcess ::= id ':' id
 parseNamedTupleAcess :: Subparser
-parseNamedTupleAcess pos _ = Left (pos, ParserError "parseNamedTupleAcess unimplemented") -- TODO: unimplemented
+parseNamedTupleAcess pos (Id lhs:NamedTuppleAccessOperator:Id rhs:rest) =
+	Right (NamedTuppleAccess (ExprId lhs) (ExprId rhs), rest)
+parseNamedTupleAcess pos _ =
+	Left (pos, ParserError "parseNamedTupleAcess error")
 
 -- lambdaDef ::= '(' {id} ')' 
 -- 	'{' { command ';'} '}'
