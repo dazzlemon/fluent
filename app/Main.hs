@@ -50,6 +50,11 @@ main = do -- pretty print version
               NamedTuple fields -> do
                 putStrLn $ replicate n '\t' ++ "tuple:"
                 mapM_ (printNamedTupleField (n + 1)) fields
+              LambdaDef args body -> do
+                putStrLn $ replicate n '\t' ++ "lambda:"
+                putStrLn $ replicate (n + 1) '\t' ++ "args: " ++ show (map str args)
+                putStrLn $ replicate (n + 1) '\t' ++ "body:"
+                mapM_ (printExpr (n + 2)) body
               _ -> putStrLn $ replicate n '\t' ++ show e
             printNamedTupleField n (ExprId lhs, rhs) = do
               putStrLn $ replicate n '\t' ++ "field `" ++ lhs ++ "`:"

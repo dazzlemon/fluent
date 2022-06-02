@@ -62,8 +62,8 @@ parser' pos commands tokens = case parseCommand pos tokens of
 	Right (command, Semicolon:rest) ->
 		parser' (pos + length tokens - length rest) (commands ++ [command]) rest
 	Left err -> Left err
-	-- Right what -> Left (pos, ParserError $ "parseCommand returned" ++ show what)
-	_ -> Left (pos, ParserError "parser' error")
+	Right what -> Left (pos, ParserError $ "parseCommand returned" ++ show what)
+	-- _ -> Left (pos, ParserError "parser' error")
 
 -- command ::= assignment | functionCall | patternMatching
 parseCommand :: Subparser
@@ -95,6 +95,7 @@ parseAssignment pos (Id string:AssignmentOperator:rest) =
 	case parseExpr (pos + 2) rest of
 		Right (expr, rest') -> Right (Assignment (ExprId string) expr, rest')
 		Left err -> Left err
+parseAssignment pos _ = Left (pos, ParserError "parseAssignment error")
 
 -- functionCall ::= id '(' {expr} ')'
 parseFunctionCall :: Subparser
@@ -180,7 +181,40 @@ parseNamedTupleAcess pos _ =
 -- lambdaDef ::= '(' {id} ')' 
 -- 	'{' { command ';'} '}'
 parseLambdaDef :: Subparser
-parseLambdaDef pos _ = Left (pos, ParserError "parseLambdaDef unimplemented") -- TODO: unimplemented
+parseLambdaDef pos (ParenthesisLeft:rest) = case parseLambdaArgs pos rest of
+	Right (args, BraceLeft:rest') ->
+		case parseLambdaBody (pos + length rest - length rest') rest' of
+			Right (body, rest'') -> Right (LambdaDef args body, rest'')
+			Left err -> Left err
+	Left err -> Left err
+	Right (_, rest') -> 
+		-- Left (pos + length rest - length rest', ParserError "parseLambdaDef error body")
+		Left (pos + length rest - length rest', ParserError $ "parseLambdaDef error body: " ++ show rest')
+parseLambdaDef pos _ = Left (pos, ParserError "parseLambdaDef error")
+
+parseLambdaArgs :: Int -> [Token]
+                -> Either (Int, ParserError) ([Expr], [Token])
+parseLambdaArgs = parseLambdaArgs' []
+
+parseLambdaArgs' :: [Expr] -> Int -> [Token]
+                -> Either (Int, ParserError) ([Expr], [Token])
+parseLambdaArgs' args _ (ParenthesisRight:rest) = Right (args, rest)
+parseLambdaArgs' args pos (Id arg:rest) =
+	parseLambdaArgs' (args ++ [ExprId arg]) (pos + 1) rest
+parseLambdaArgs' _ pos _ = Left (pos, ParserError "parseLambdaArgs' error")
+
+parseLambdaBody :: Int -> [Token]
+                -> Either (Int, ParserError) ([Expr], [Token])
+parseLambdaBody = parseLambdaBody' []
+
+parseLambdaBody' :: [Expr] -> Int -> [Token]
+                 -> Either (Int, ParserError) ([Expr], [Token])
+parseLambdaBody' commands _ (BraceRight:rest) = Right (commands, rest)
+parseLambdaBody' commands pos tokens = case parseCommand pos tokens of
+	Right (command, Semicolon:rest) ->
+		parseLambdaBody' (commands ++ [command]) (pos + length tokens - length rest) rest
+	Left err -> Left err
+	_ -> Left (pos, ParserError "parseLambdaBody' error")
 
 -- namedTuple ::= '[' {namedTupleField} ']'
 -- namedTupleField ::= id '=' expr
