@@ -4,21 +4,21 @@ forEach <- (list callback) {
 	match list:next {
 		NULL -> NULL;
 		_ -> forEach(list:next callback);
-	}
+	};
 };
 
 map <- (list callback) {
 	match list {
 		[val = _ next = _] -> [val = callback(list:val) next = map(list:next)];
 		_ -> NULL;
-	}
+	};
 };
 
 range <- (min max) {
 	match lessOrEqual(min max) {# predefined
 		true  -> [val = min next = range(add(1 min) max)];
-		false -> NULL;
-	}
+		_ -> NULL;
+	};
 };
 
 fizzBuzz <- (n) {
@@ -27,7 +27,7 @@ fizzBuzz <- (n) {
 		[m3 = 0 m5 = _] -> 'fizz';
 		[m3 = _ m5 = 0] -> 'buzz';
 		_ -> n;
-	}
+	};
 };
 
 forEach(

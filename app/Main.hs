@@ -48,17 +48,31 @@ main = do -- pretty print version
                 putStrLn $ replicate n '\t' ++ "tuple:"
                 mapM_ (printExpr (n + 1)) fields
               NamedTuple fields -> do
-                putStrLn $ replicate n '\t' ++ "tuple:"
+                putStrLn $ replicate n '\t' ++ "named tuple:"
                 mapM_ (printNamedTupleField (n + 1)) fields
               LambdaDef args body -> do
                 putStrLn $ replicate n '\t' ++ "lambda:"
                 putStrLn $ replicate (n + 1) '\t' ++ "args: " ++ show (map str args)
                 putStrLn $ replicate (n + 1) '\t' ++ "body:"
                 mapM_ (printExpr (n + 2)) body
+              PatternMatching switch cases defaultCase -> do
+                putStrLn $ replicate n '\t' ++ "pattern matching:"
+                putStrLn $ replicate (n + 1) '\t' ++ "switch:"
+                printExpr (n + 2) switch
+                putStrLn $ replicate (n + 1) '\t' ++ "cases:"
+                mapM_ (printCase (n + 2)) cases
+                putStrLn $ replicate (n + 1) '\t' ++ "default:"
+                printExpr (n + 2) defaultCase
               _ -> putStrLn $ replicate n '\t' ++ show e
             printNamedTupleField n (ExprId lhs, rhs) = do
               putStrLn $ replicate n '\t' ++ "field `" ++ lhs ++ "`:"
               printExpr (n + 1) rhs
+            printCase n (lhs, rhs) = do
+              putStrLn $ replicate n '\t' ++ "case:"
+              putStrLn $ replicate (n + 1) '\t' ++ "lhs:"
+              printExpr (n + 2) lhs
+              putStrLn $ replicate (n + 1) '\t' ++ "rhs:"
+              printExpr (n + 2) rhs
 
 showErr code offset = showTable [ [lineIndexStr, " | ", line]
                                 , ["",           "",    arrow]

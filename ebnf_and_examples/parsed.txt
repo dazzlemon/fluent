@@ -1,0 +1,327 @@
+1   Id                         'forEach'    
+9   AssignmentOperator                      
+12  ParenthesisLeft                         
+13  Id                         'list'       
+18  Id                         'callback'   
+26  ParenthesisRight                        
+28  BraceLeft                               
+31  Id                         'callback'   
+39  ParenthesisLeft                         
+40  Id                         'list'       
+44  NamedTuppleAccessOperator               
+45  Id                         'val'        
+48  ParenthesisRight                        
+49  Semicolon                               
+52  MatchKeyword                            
+58  Id                         'list'       
+62  NamedTuppleAccessOperator               
+63  Id                         'next'       
+68  BraceLeft                               
+72  Null                                    
+77  MatchArrow                              
+80  Null                                    
+84  Semicolon                               
+88  WildCard                                
+90  MatchArrow                              
+93  Id                         'forEach'    
+100 ParenthesisLeft                         
+101 Id                         'list'       
+105 NamedTuppleAccessOperator               
+106 Id                         'next'       
+111 Id                         'callback'   
+119 ParenthesisRight                        
+120 Semicolon                               
+123 BraceRight                              
+124 Semicolon                               
+126 BraceRight                              
+127 Semicolon                               
+130 Id                         'map'        
+134 AssignmentOperator                      
+137 ParenthesisLeft                         
+138 Id                         'list'       
+143 Id                         'callback'   
+151 ParenthesisRight                        
+153 BraceLeft                               
+156 MatchKeyword                            
+162 Id                         'list'       
+167 BraceLeft                               
+171 BracketLeft                             
+172 Id                         'val'        
+176 NamedTuppleBindingOperator              
+178 WildCard                                
+180 Id                         'next'       
+185 NamedTuppleBindingOperator              
+187 WildCard                                
+188 BracketRight                            
+190 MatchArrow                              
+193 BracketLeft                             
+194 Id                         'val'        
+198 NamedTuppleBindingOperator              
+200 Id                         'callback'   
+208 ParenthesisLeft                         
+209 Id                         'list'       
+213 NamedTuppleAccessOperator               
+214 Id                         'val'        
+217 ParenthesisRight                        
+219 Id                         'next'       
+224 NamedTuppleBindingOperator              
+226 Id                         'map'        
+229 ParenthesisLeft                         
+230 Id                         'list'       
+234 NamedTuppleAccessOperator               
+235 Id                         'next'       
+239 ParenthesisRight                        
+240 BracketRight                            
+241 Semicolon                               
+245 WildCard                                
+247 MatchArrow                              
+250 Null                                    
+254 Semicolon                               
+257 BraceRight                              
+258 Semicolon                               
+260 BraceRight                              
+261 Semicolon                               
+264 Id                         'range'      
+270 AssignmentOperator                      
+273 ParenthesisLeft                         
+274 Id                         'min'        
+278 Id                         'max'        
+281 ParenthesisRight                        
+283 BraceLeft                               
+286 MatchKeyword                            
+292 Id                         'lessOrEqual'
+303 ParenthesisLeft                         
+304 Id                         'min'        
+308 Id                         'max'        
+311 ParenthesisRight                        
+313 BraceLeft                               
+329 Id                         'true'       
+335 MatchArrow                              
+338 BracketLeft                             
+339 Id                         'val'        
+343 NamedTuppleBindingOperator              
+345 Id                         'min'        
+349 Id                         'next'       
+354 NamedTuppleBindingOperator              
+356 Id                         'range'      
+361 ParenthesisLeft                         
+362 Id                         'add'        
+365 ParenthesisLeft                         
+366 Number                     '1'          
+368 Id                         'min'        
+371 ParenthesisRight                        
+373 Id                         'max'        
+376 ParenthesisRight                        
+377 BracketRight                            
+378 Semicolon                               
+382 WildCard                                
+384 MatchArrow                              
+387 Null                                    
+391 Semicolon                               
+394 BraceRight                              
+395 Semicolon                               
+397 BraceRight                              
+398 Semicolon                               
+401 Id                         'fizzBuzz'   
+410 AssignmentOperator                      
+413 ParenthesisLeft                         
+414 Id                         'n'          
+415 ParenthesisRight                        
+417 BraceLeft                               
+420 MatchKeyword                            
+426 BracketLeft                             
+427 Id                         'm3'         
+430 NamedTuppleBindingOperator              
+432 Id                         'mod'        
+435 ParenthesisLeft                         
+436 Id                         'n'          
+438 Number                     '3'          
+439 ParenthesisRight                        
+441 Id                         'm5'         
+444 NamedTuppleBindingOperator              
+446 Id                         'mod'        
+449 ParenthesisLeft                         
+450 Id                         'n'          
+452 Number                     '5'          
+453 ParenthesisRight                        
+454 BracketRight                            
+456 BraceLeft                               
+472 BracketLeft                             
+473 Id                         'm3'         
+476 NamedTuppleBindingOperator              
+478 Number                     '0'          
+480 Id                         'm5'         
+483 NamedTuppleBindingOperator              
+485 Number                     '0'          
+486 BracketRight                            
+488 MatchArrow                              
+491 StringLiteral              'fizzBuzz'   
+501 Semicolon                               
+505 BracketLeft                             
+506 Id                         'm3'         
+509 NamedTuppleBindingOperator              
+511 Number                     '0'          
+513 Id                         'm5'         
+516 NamedTuppleBindingOperator              
+518 WildCard                                
+519 BracketRight                            
+521 MatchArrow                              
+524 StringLiteral              'fizz'       
+530 Semicolon                               
+534 BracketLeft                             
+535 Id                         'm3'         
+538 NamedTuppleBindingOperator              
+540 WildCard                                
+542 Id                         'm5'         
+545 NamedTuppleBindingOperator              
+547 Number                     '0'          
+548 BracketRight                            
+550 MatchArrow                              
+553 StringLiteral              'buzz'       
+559 Semicolon                               
+563 WildCard                                
+565 MatchArrow                              
+568 Id                         'n'          
+569 Semicolon                               
+572 BraceRight                              
+573 Semicolon                               
+575 BraceRight                              
+576 Semicolon                               
+579 Id                         'forEach'    
+586 ParenthesisLeft                         
+589 Id                         'map'        
+592 ParenthesisLeft                         
+593 Id                         'range'      
+598 ParenthesisLeft                         
+599 Number                     '1'          
+601 Number                     '100'        
+605 Number                     '1'          
+606 ParenthesisRight                        
+608 Id                         'fizzBuzz'   
+616 ParenthesisRight                        
+619 Id                         'print'      
+638 ParenthesisRight                        
+639 Semicolon                               
+
+assignment to `forEach`:
+	lambda:
+		args: ["list","callback"]
+		body:
+			function call `callback`, args:
+				named tuple acess `list:val`
+			pattern matching:
+				switch:
+					named tuple acess `list:next`
+				cases:
+					case:
+						lhs:
+							NullExpr
+						rhs:
+							NullExpr
+				default:
+					function call `forEach`, args:
+						named tuple acess `list:next`
+						id: callback
+assignment to `map`:
+	lambda:
+		args: ["list","callback"]
+		body:
+			pattern matching:
+				switch:
+					id: list
+				cases:
+					case:
+						lhs:
+							named tuple:
+								field `val`:
+									WildCardExpr
+								field `next`:
+									WildCardExpr
+						rhs:
+							named tuple:
+								field `val`:
+									function call `callback`, args:
+										named tuple acess `list:val`
+								field `next`:
+									function call `map`, args:
+										named tuple acess `list:next`
+				default:
+					NullExpr
+assignment to `range`:
+	lambda:
+		args: ["min","max"]
+		body:
+			pattern matching:
+				switch:
+					function call `lessOrEqual`, args:
+						id: min
+						id: max
+				cases:
+					case:
+						lhs:
+							id: true
+						rhs:
+							named tuple:
+								field `val`:
+									id: min
+								field `next`:
+									function call `range`, args:
+										function call `add`, args:
+											number: 1
+											id: min
+										id: max
+				default:
+					NullExpr
+assignment to `fizzBuzz`:
+	lambda:
+		args: ["n"]
+		body:
+			pattern matching:
+				switch:
+					named tuple:
+						field `m3`:
+							function call `mod`, args:
+								id: n
+								number: 3
+						field `m5`:
+							function call `mod`, args:
+								id: n
+								number: 5
+				cases:
+					case:
+						lhs:
+							named tuple:
+								field `m3`:
+									number: 0
+								field `m5`:
+									number: 0
+						rhs:
+							ExprString {str = "fizzBuzz"}
+					case:
+						lhs:
+							named tuple:
+								field `m3`:
+									number: 0
+								field `m5`:
+									WildCardExpr
+						rhs:
+							ExprString {str = "fizz"}
+					case:
+						lhs:
+							named tuple:
+								field `m3`:
+									WildCardExpr
+								field `m5`:
+									number: 0
+						rhs:
+							ExprString {str = "buzz"}
+				default:
+					id: n
+function call `forEach`, args:
+	function call `map`, args:
+		function call `range`, args:
+			number: 1
+			number: 100
+			number: 1
+		id: fizzBuzz
+	id: print
