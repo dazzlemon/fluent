@@ -8,7 +8,7 @@ import Data.List (findIndex, elemIndex)
 -- newtype EvaluatorError = EvaluatorError String
 
 evaluator :: Program -> IO ()
-evaluator = evaluator' []
+evaluator = evaluator' [[]]
 
 -- type InnerFunction = ([[(String, Variable)]] -> EvaluationResult)
 
@@ -67,7 +67,9 @@ containsVar :: String -> [(String, Variable)] -> Bool
 containsVar name = any $ (== name) . fst
 
 evalAfterAssignment :: String -> Variable -> [[(String, Variable)]] -> Program -> IO ()
-evalAfterAssignment lhs rhs variableScopes = evaluator' variableScopes'
+evalAfterAssignment lhs rhs variableScopes commands = do
+  -- putStrLn $ "variableScopes: " ++ show variableScopes'
+  evaluator' variableScopes' commands
   where variableScopes' = case maybeI of
           Just i -> case findIndex ((== lhs) . fst) (variableScopes !! i) of
             Just j -> replaceNth i (replaceNth j (lhs, rhs) (variableScopes !! i)) variableScopes
