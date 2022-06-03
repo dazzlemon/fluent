@@ -11,6 +11,7 @@ evaluator = mapM_ evalExpr
 
 evalExpr :: Expr -> IO () 
 evalExpr (FunctionCall (ExprId "print") [ExprString str]) = putStrLn str
+evalExpr (FunctionCall (ExprId "print") [ExprNumber str]) = putStrLn str
 evalExpr _ = do
   putStrLn "not implemented yet"
   exitFailure -- TODO:
