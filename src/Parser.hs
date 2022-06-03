@@ -141,12 +141,11 @@ parseMatchBody' cases pos (WildCard:MatchArrow:tokens) = case parseExpr (pos + 2
 		Right (cases, defaultCase, rest)
 	Left err -> Left err
 	_ -> Left (pos, ParserError "parseMatchBody' error default")
-
 parseMatchBody' cases pos tokens = do
-  (lhs, rest1) <- parseExpr pos tokens
-  rest2 <- skipToken MatchArrow (posFromRest rest1) rest1
-  (rhs, rest3) <- parseExpr (posFromRest rest2) rest2
-  rest4 <- skipToken Semicolon (posFromRest rest3) rest3
+  (lhs, rest1) <- parseExpr pos tokens -- expr
+  rest2 <- skipToken MatchArrow (posFromRest rest1) rest1 -- '->'
+  (rhs, rest3) <- parseExpr (posFromRest rest2) rest2 -- expr
+  rest4 <- skipToken Semicolon (posFromRest rest3) rest3 -- ';'
   parseMatchBody' (cases ++ [(lhs, rhs)]) (posFromRest rest4) rest4
 	where posFromRest rest = pos + length tokens - length rest
 
@@ -154,9 +153,11 @@ skipToken :: Token -> Int -> [Token] -> Either (Int, ParserError) [Token]
 skipToken token pos tokens = case listToMaybe tokens of
 	Just first -> if first == token
 		then Right $ tail tokens
-		else Left (pos, ParserError $ expected ++ "`" ++ show (toConstr first) ++ "`")
-	Nothing -> Left (pos, ParserError $ expected ++ "empty list of tokens")
-	where expected = "expected `" ++ show (toConstr token) ++ "`, but got "
+		else Left (pos, error $ "`" ++ showConstr first ++ "`")
+	Nothing -> Left (pos, error "empty list of tokens")
+	where error suffix = ParserError $ "expected `" ++ showConstr token
+	                                ++ "`, but got " ++ suffix
+	      showConstr = show . toConstr
 
 -- expr ::= number
 --        | string
