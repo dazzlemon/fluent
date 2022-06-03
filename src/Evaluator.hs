@@ -3,18 +3,97 @@ module Evaluator where
 import System.Exit (exitFailure)
 import Parser
 import Control.Monad (mplus)
+import Data.List (findIndex, elemIndex)
 
-newtype EvaluatorError = EvaluatorError String
+-- newtype EvaluatorError = EvaluatorError String
 
 evaluator :: Program -> IO ()
-evaluator = mapM_ evalExpr
+evaluator = evaluator' []
 
-evalExpr :: Expr -> IO () 
-evalExpr (FunctionCall (ExprId "print") [ExprString str]) = putStrLn str
-evalExpr (FunctionCall (ExprId "print") [ExprNumber str]) = putStrLn str
-evalExpr _ = do
-  putStrLn "not implemented yet"
-  exitFailure -- TODO:
+-- type InnerFunction = ([[(String, Variable)]] -> EvaluationResult)
+
+data Variable = VarNumber { varStr::String }
+              | VarString { varStr::String }
+              -- function will be evaluated every time with new args
+              | VarFunction { argNames::[String], body::Program }
+              | VarTuple { fields::[Variable] }
+              | VarNamedTuple { namedFields::[(String, Variable)] }
+              | VarNull
+              | VarWildCard
+              -- | VarInnerFunction { argNames::[String]
+              --                    , functionBody::InnerFunction
+              --                    }
+              deriving (Show)
+
+evaluator' :: [[(String, Variable)]] -> Program -> IO ()
+evaluator' _ [] = return ()
+evaluator' variableScopes (first:rest) = case first of
+  Assignment (ExprId lhs) rhs -> case evalExpr variableScopes rhs of
+    (Just rhsVar, io) -> do
+      io
+      evalAfterAssignment lhs rhsVar variableScopes rest
+  FunctionCall (ExprId "print") [ExprString str] -> do
+    putStrLn str
+    evaluator' variableScopes rest
+  FunctionCall (ExprId "print") [ExprNumber str] -> do
+    putStrLn str
+    evaluator' variableScopes rest
+  FunctionCall (ExprId "print") [ExprId str] -> case findVarById str variableScopes of
+    Just var -> case var of
+      VarString val -> do
+        putStrLn val
+        evaluator' variableScopes rest
+      VarNumber val -> do
+        putStrLn val
+        evaluator' variableScopes rest
+      _ -> do
+        putStrLn "not implemented yet"
+        exitFailure -- TODO:
+    _ -> do
+      -- putStrLn $ "error: variable `" ++ str ++ "` not assigned"
+      putStrLn $ "error: variable `" ++ str ++ "` not assigned, variableScopes: " ++ show variableScopes
+      exitFailure -- TODO:
+  _ -> do
+    putStrLn "not implemented yet"
+    exitFailure -- TODO:
+
+findVarById :: String -> [[(String, Variable)]] -> Maybe Variable
+findVarById name variableScopes = do
+  i <- findIndex (containsVar name) variableScopes
+  j <- findIndex ((== name) . fst) (variableScopes !! i)
+  return (snd $ variableScopes !! i !! j)
+
+containsVar :: String -> [(String, Variable)] -> Bool
+containsVar name = any $ (== name) . fst
+
+evalAfterAssignment :: String -> Variable -> [[(String, Variable)]] -> Program -> IO ()
+evalAfterAssignment lhs rhs variableScopes = evaluator' variableScopes'
+  where variableScopes' = case maybeI of
+          Just i -> case findIndex ((== lhs) . fst) (variableScopes !! i) of
+            Just j -> replaceNth i (replaceNth j (lhs, rhs) (variableScopes !! i)) variableScopes
+          Nothing -> ((lhs, rhs):head variableScopes):tail variableScopes
+        maybeI = findIndex (containsVar lhs) variableScopes
+        
+replaceNth :: Int -> a -> [a] -> [a]
+replaceNth _ _ [] = []
+replaceNth n newVal (x:xs)
+  | n == 0 = newVal:xs
+  | otherwise = x:replaceNth (n - 1) newVal xs
+
+evalExpr :: [[(String, Variable)]] -> Expr -> (Maybe Variable, IO ())
+evalExpr _ (ExprNumber str) = (Just $ VarNumber str, return ())
+evalExpr _ (ExprString str) = (Just $ VarString str, return ())
+evalExpr variableScopes (ExprId str) = (findVarById str variableScopes, return ())
+
+-- evaluator :: Program -> IO ()
+-- evaluator = mapM_ evalExpr
+
+-- evalExpr :: Expr -> IO () 
+-- evalExpr (FunctionCall (ExprId "print") [ExprString str]) = putStrLn str
+-- evalExpr (FunctionCall (ExprId "print") [ExprNumber str]) = putStrLn str
+-- evalExpr _ = do
+--   putStrLn "not implemented yet"
+--   exitFailure -- TODO:
 
 -- type EvaluationResult = Either (Int, EvaluatorError) (Variable, IO ())
 
@@ -23,21 +102,6 @@ evalExpr _ = do
 
 -- evaluator' :: [[(String, Variable)]] -> IO -> Program -> EvaluationResult
 -- evaluator' _ io [] = Right (io) 
-
--- type InnerFunction = ([[(String, Variable)]] -> EvaluationResult)
-
--- data Variable = VarNumber { varStr::String }
---               | VarString { varStr::String }
---               -- function will be evaluated every time with new args
---               | VarFunction { argNames::[String], body::Program }
---               | VarTuple { fields::[Variable] }
---               | VarNamedTuple { namedFields::[(String, Variable)] }
---               | VarNull
---               | VarWildCard
---               | VarInnerFunction { argNames::[String]
---                                  , functionBody::InnerFunction
---                                  }
-
 
 -- evalExpr :: [[(String, Variable)]] -> Expr -> EvaluationResult
 -- -- evalExpr variableScopes expr =
