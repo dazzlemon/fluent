@@ -215,16 +215,12 @@ parseNamedTupleAcess pos _ =
 -- lambdaDef ::= '(' {id} ')' 
 -- 	'{' { command ';'} '}'
 parseLambdaDef :: Subparser
-parseLambdaDef pos (ParenthesisLeft:rest) = case parseLambdaArgs (pos + 1) rest of
-	Right (args, BraceLeft:rest') ->
-		case parseLambdaBody (pos + 1 + length rest - length rest') rest' of
-			Right (body, rest'') -> Right (LambdaDef args body, rest'')
-			Left err -> Left err
-	Left err -> Left err
-	Right (_, rest') -> 
-		-- Left (pos + length rest - length rest', ParserError "parseLambdaDef error body")
-		Left (pos + length rest - length rest', ParserError $ "parseLambdaDef error body: " ++ show rest')
-parseLambdaDef pos _ = Left (pos, ParserError "parseLambdaDef error")
+parseLambdaDef pos tokens = do
+	rest <- skipToken ParenthesisLeft pos tokens -- '('
+	(args, rest1) <- parseLambdaArgs (pos + 1) rest -- {id} ')'
+	rest2 <- skipToken BraceLeft (pos + length tokens - length rest1) rest1 -- '{'
+	(body, rest3) <- parseLambdaBody (pos + length tokens - length rest2) rest2
+	return (LambdaDef args body, rest3)
 
 parseLambdaArgs :: Int -> [Token]
                 -> Either (Int, ParserError) ([Expr], [Token])
