@@ -10,6 +10,8 @@ data Variable = VarNumber { varStr::String }
               | VarFunction { argNames::[String], body::Program }
               | VarTuple { fields::[Variable] }
               | VarNamedTuple { namedFields::[(String, Variable)] }
+							| VarNull
+							| VarWildCard
 
 evalExpr :: [[(String, Variable)]] -> Expr -> IO ()
 -- evalExpr variableScopes expr =
@@ -20,8 +22,8 @@ evalExpr :: [[(String, Variable)]] -> Expr -> IO ()
 		-- get value from deepest variableScope
 		-- set args in new variableScope
 		-- call evalExpr for body of the function
-	-- WildCardExpr -- probably depends on use -- TODO: ?
-	-- NullExpr -- TODO: ?
+	-- WildCardExpr -- VarWildCard
+	-- NullExpr -- VarNull
 	-- NamedTuppleAccess tupleName fieldName
 		-- get value from deepest variableScope
 		-- get field
