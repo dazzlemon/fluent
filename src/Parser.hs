@@ -5,7 +5,8 @@ import Lexer
 import Data.List (maximumBy, minimumBy)
 import Data.Either (partitionEithers)
 import Data.Function (on)
-import Data.Data (Typeable, Data)
+import Data.Data (Typeable, Data, Constr, toConstr)
+import Data.Maybe (listToMaybe)
 
 -- program ::= { command ';'}
 type Program = [Expr]
@@ -135,21 +136,27 @@ parseMatchBody :: Int -> [Token]
                -> Either (Int, ParserError) ([(Expr, Expr)], Expr, [Token])
 parseMatchBody = parseMatchBody' []
 
-parseMatchBody' :: [(Expr, Expr)] -> Int -> [Token]
-               -> Either (Int, ParserError) ([(Expr, Expr)], Expr, [Token])
 parseMatchBody' cases pos (WildCard:MatchArrow:tokens) = case parseExpr (pos + 2) tokens of
 	Right (defaultCase, Semicolon:BraceRight:rest) ->
 		Right (cases, defaultCase, rest)
 	Left err -> Left err
 	_ -> Left (pos, ParserError "parseMatchBody' error default")
-parseMatchBody' cases pos tokens = case parseExpr pos tokens of
-	Right (lhs, MatchArrow:rest) -> case parseExpr (pos + length tokens - length rest) rest of
-		Right (rhs, Semicolon:rest') ->
-			parseMatchBody' (cases ++ [(lhs, rhs)]) (pos + length tokens - length rest') rest'
-		Left err -> Left err
-		_ -> Left (pos, ParserError "parseMatchBody' error rhs")
-	Left err -> Left err
-	_ -> Left (pos, ParserError "parseMatchBody' error lhs")
+
+parseMatchBody' cases pos tokens = do
+  (lhs, rest1) <- parseExpr pos tokens
+  rest2 <- skipToken MatchArrow (posFromRest rest1) rest1
+  (rhs, rest3) <- parseExpr (posFromRest rest2) rest2
+  rest4 <- skipToken Semicolon (posFromRest rest3) rest3
+  parseMatchBody' (cases ++ [(lhs, rhs)]) (posFromRest rest4) rest4
+	where posFromRest rest = pos + length tokens - length rest
+
+skipToken :: Token -> Int -> [Token] -> Either (Int, ParserError) [Token]
+skipToken token pos tokens = case listToMaybe tokens of
+	Just first -> if first == token
+		then Right $ tail tokens
+		else Left (pos, ParserError $ expected ++ "`" ++ show (toConstr first) ++ "`")
+	Nothing -> Left (pos, ParserError $ expected ++ "empty list of tokens")
+	where expected = "expected `" ++ show (toConstr token) ++ "`, but got "
 
 -- expr ::= number
 --        | string
