@@ -5,6 +5,7 @@ import Control.Monad ( when )
 import System.Exit (exitFailure)
 import ListPadding (rpad, lpad)
 import Parser
+import Evaluator
 
 -- main = interact (show . lexer) -- normal version
 main = do -- pretty print version
@@ -28,6 +29,8 @@ main = do -- pretty print version
         Right commands -> do
           putStrLn ""
           mapM_ (printExpr 0) commands
+          putStrLn ""
+          evaluator commands
         Left (pos, err) -> do
           putStrLn $ "parser error at " ++ show pos ++ ": " ++ show err
           putStr $ showErr code (position $ tokenList !! pos)

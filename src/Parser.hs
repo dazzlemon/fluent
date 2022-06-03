@@ -71,7 +71,9 @@ parseCommand :: Subparser
 parseCommand _ [] = Right (Empty, [])
 parseCommand pos tokens = case (parseErrors, parseGood) of
 	-- only errors -> furthest error
-	(_ , []) -> Left (pos, ParserError "Unknown construction")
+	(_ , []) -> if fst furthestError == pos
+		then Left (pos, ParserError "Unknown construction")
+		else Left furthestError
 	-- no errors -> furthest good
 	([], _ ) -> Right furthestGood
 	-- some errors, and some good -> just return furthest
