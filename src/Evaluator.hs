@@ -71,7 +71,8 @@ evaluator' variableScopes (first:rest) = case first of
     io
     evaluator' variableScopes [expr]
     evaluator' variableScopes rest
-  _ -> exitWithErrorMessage "not implemented yet" -- TODO:
+  NullExpr -> evaluator' variableScopes rest -- just don't print it
+  other -> exitWithErrorMessage $ "not implemented yet: " ++ show other -- TODO:
   where printStr str = do
           putStrLn str
           evaluator' variableScopes rest
@@ -118,8 +119,7 @@ match (VarNumber lhs) (VarNumber rhs) = rhs == lhs
 match (VarString lhs) (VarString rhs) = rhs == lhs
 match VarWildCard _ = True
 match _ VarWildCard = True
-match VarNull _ = False
-match _ VarNull = False
+match VarNull VarNull = True
 match _ _ = False -- TODO: others won't match for now
 
 findVarById :: String -> [[(String, Variable)]] -> Maybe Variable
@@ -243,47 +243,3 @@ subExprs variableScopes lhs rhs = case evalExpr variableScopes lhs of
     io1
     exitWithErrorMessage "expected number argument"
     )
-
--- evaluator :: Program -> IO ()
--- evaluator = mapM_ evalExpr
-
--- evalExpr :: Expr -> IO () 
--- evalExpr (FunctionCall (ExprId "print") [ExprString str]) = putStrLn str
--- evalExpr (FunctionCall (ExprId "print") [ExprNumber str]) = putStrLn str
--- evalExpr _ = do
---   putStrLn "not implemented yet"
---   exitFailure -- TODO:
-
--- type EvaluationResult = Either (Int, EvaluatorError) (Variable, IO ())
-
--- evaluator :: Program -> EvaluationResult
--- evaluator = evaluator' [] (IO ())
-
--- evaluator' :: [[(String, Variable)]] -> IO -> Program -> EvaluationResult
--- evaluator' _ io [] = Right (io) 
-
--- evalExpr :: [[(String, Variable)]] -> Expr -> EvaluationResult
--- -- evalExpr variableScopes expr =
--- 	-- ExprNumber str -- VarNumber str
--- 	-- ExprString str -- VarString str
--- 	-- ExprId str -- get value from deepest variableScope
--- 	-- FunctionCall id args
--- 		-- get value from deepest variableScope
--- 		-- set args in new variableScope
--- 		-- call evalExpr for body of the function
--- 	-- WildCardExpr -- VarWildCard
--- 	-- NullExpr -- VarNull
--- 	-- NamedTuppleAccess tupleName fieldName
--- 		-- get value from deepest variableScope
--- 		-- get field
--- 	-- LambdaDef argNames commandList -- VarFunction
--- 	-- Assignment lhs rhs
--- 		-- if it doesn't exist in current variableScope
--- 			-- then: add it to current variableScope
--- 			-- else: assign new value
--- 	-- PatternMatching switch cases defaultCase
--- 		-- try to match switch against cases, if it doesnt match -> default case
--- 		-- result = rhs expr of first matching case (or default)
--- 	-- Tuple values -- VarTuple
--- 	-- NamedTuple -- VarNamedTuple
--- 	-- Empty -- TODO: remove
