@@ -39,9 +39,7 @@ evaluator' variableScopes (first:rest) = case first of
       ExprString str -> printStr str
       ExprNumber str -> printStr str
       ExprId str -> printId str
-      _ -> do
-        putStrLn "not implemented yet"
-        exitFailure -- TODO:
+      _ -> exitWithErrorMessage "not implemented yet" -- TODO:
   FunctionCall (ExprId fname) args -> case findVarById fname variableScopes of
     Just (VarFunction argNames body) -> if length argNames /= length args
       then expectedArgs fname (length argNames) (length args)
@@ -52,12 +50,8 @@ evaluator' variableScopes (first:rest) = case first of
         sequence_ ios
         evaluator' (zip argNames argVars:variableScopes) body
         evaluator' variableScopes rest
-    Just _ -> do
-      putStrLn $ "error: `" ++ fname ++ "` is not a function"
-      exitFailure
-    Nothing -> do
-      putStrLn $ "error: `" ++ fname ++ "` is not initialized"
-      exitFailure
+    Just _ -> exitWithErrorMessage $ "error: `" ++ fname ++ "` is not a function"
+    Nothing -> exitWithErrorMessage $ "error: `" ++ fname ++ "` is not initialized"
   PatternMatching switch cases defaultCase -> do
     let (lefts, rights) = unzip cases
     -- TODO: if lhs is a function it will have to be evaluated, so one more io
@@ -68,9 +62,7 @@ evaluator' variableScopes (first:rest) = case first of
     io
     evaluator' variableScopes [expr]
     evaluator' variableScopes rest
-  _ -> do
-    putStrLn "not implemented yet"
-    exitFailure -- TODO:
+  _ -> exitWithErrorMessage "not implemented yet" -- TODO:
   where printStr str = do
           putStrLn str
           evaluator' variableScopes rest
@@ -78,18 +70,11 @@ evaluator' variableScopes (first:rest) = case first of
           Just var -> case var of
             VarString val -> printStr val
             VarNumber val -> printStr val
-            _ -> do
-              putStrLn "not implemented yet"
-              exitFailure -- TODO:
-          _ -> do
-            -- putStrLn $ "error: variable `" ++ str ++ "` not assigned"
-            putStrLn $ "error: variable `" ++ str ++ "` not assigned, variableScopes: " ++ show variableScopes
-            exitFailure -- TODO:
-        expectedArgs fname expected got = do
-          putStrLn $ "error: `" ++ fname
-                  ++ "` expected " ++ show expected ++ " argument(s), but got "
-                  ++ show got
-          exitFailure
+            _ -> exitWithErrorMessage "not implemented yet" -- TODO:
+          _ -> exitWithErrorMessage $ "error: variable `" ++ str ++ "` not assigned, variableScopes: " ++ show variableScopes -- TODO:
+        expectedArgs fname expected got = exitWithErrorMessage $ "error: `" ++ fname
+          ++ "` expected " ++ show expected ++ " argument(s), but got "
+          ++ show got
 
 findMatch :: [[(String, Variable)]] -> Expr -> [Expr] -> (IO (), Maybe Int)
 findMatch = findMatch' 0
@@ -104,17 +89,18 @@ findMatch' i variableScopes lhs (rhs:rest) = (io, maybeVar)
         (mbLhsVar, io1) = evalExpr variableScopes lhs
         (mbRhsVar, io2) = evalExpr variableScopes rhs
         (io3, maybeVar) = case (mbLhsVar, mbRhsVar) of
-          (Nothing, _) -> (do
-            putStrLn "error: lhs didn't evaluate"
-            exitFailure
-            , Nothing)
-          (_, Nothing) -> (do
-            putStrLn "error: rhs didn't evaluate"
-            exitFailure
-            , Nothing)
+          (Nothing, _) -> ( exitWithErrorMessage "error: lhs didn't evaluate"
+                          , Nothing)
+          (_, Nothing) -> ( exitWithErrorMessage "error: rhs didn't evaluate"
+                          , Nothing)
           (Just lhs', Just rhs') -> if match lhs' rhs'
             then (return (), Just i)
             else findMatch' (i + 1) variableScopes lhs rest
+
+exitWithErrorMessage :: String -> IO ()
+exitWithErrorMessage err = do
+  putStrLn err
+  exitFailure 
 
 match :: Variable -> Variable -> Bool
 match (VarNumber lhs) (VarNumber rhs) = rhs == lhs
