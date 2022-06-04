@@ -1,0 +1,11 @@
+test <- (n) {
+  match n {
+    0 -> print('zero');
+    1 -> print('one');
+    _ -> print('greater than or equal to two');
+  };
+};
+test(0);
+test(1);
+test(2);
+test(3);

@@ -58,6 +58,16 @@ evaluator' variableScopes (first:rest) = case first of
     Nothing -> do
       putStrLn $ "error: `" ++ fname ++ "` is not initialized"
       exitFailure
+  PatternMatching switch cases defaultCase -> do
+    let (lefts, rights) = unzip cases
+    -- TODO: if lhs is a function it will have to be evaluated, so one more io
+    let (io, maybeIndex) = findMatch variableScopes switch lefts
+    let expr = case maybeIndex of
+                Just i -> rights !! i
+                Nothing -> defaultCase
+    io
+    evaluator' variableScopes [expr]
+    evaluator' variableScopes rest
   _ -> do
     putStrLn "not implemented yet"
     exitFailure -- TODO:
@@ -80,6 +90,40 @@ evaluator' variableScopes (first:rest) = case first of
                   ++ "` expected " ++ show expected ++ " argument(s), but got "
                   ++ show got
           exitFailure
+
+findMatch :: [[(String, Variable)]] -> Expr -> [Expr] -> (IO (), Maybe Int)
+findMatch = findMatch' 0
+
+findMatch' :: Int -> [[(String, Variable)]] -> Expr -> [Expr] -> (IO (), Maybe Int)
+findMatch' _ _ _ [] = (return (), Nothing)
+findMatch' i variableScopes lhs (rhs:rest) = (io, maybeVar)
+  where io = do 
+              io1
+              io2
+              io3
+        (mbLhsVar, io1) = evalExpr variableScopes lhs
+        (mbRhsVar, io2) = evalExpr variableScopes rhs
+        (io3, maybeVar) = case (mbLhsVar, mbRhsVar) of
+          (Nothing, _) -> (do
+            putStrLn "error: lhs didn't evaluate"
+            exitFailure
+            , Nothing)
+          (_, Nothing) -> (do
+            putStrLn "error: rhs didn't evaluate"
+            exitFailure
+            , Nothing)
+          (Just lhs', Just rhs') -> if match lhs' rhs'
+            then (return (), Just i)
+            else findMatch' (i + 1) variableScopes lhs rest
+
+match :: Variable -> Variable -> Bool
+match (VarNumber lhs) (VarNumber rhs) = rhs == lhs
+match (VarString lhs) (VarString rhs) = rhs == lhs
+match VarWildCard _ = True
+match _ VarWildCard = True
+match VarNull _ = False
+match _ VarNull = False
+match _ _ = False -- TODO: others won't match for now
 
 findVarById :: String -> [[(String, Variable)]] -> Maybe Variable
 findVarById name variableScopes = do
