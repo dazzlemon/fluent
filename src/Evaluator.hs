@@ -39,6 +39,15 @@ evaluator' variableScopes (first:rest) = case first of
       ExprString str -> printStr str
       ExprNumber str -> printStr str
       ExprId str -> printId str
+      fc@(FunctionCall _ _) -> case evalExpr variableScopes fc of
+        (Just arg, io) -> do
+          io
+          case arg of
+            VarString str -> printStr str
+            VarNumber str -> printStr str
+        (Nothing, io) -> do
+          io
+          exitWithErrorMessage "error: argument expression wasn't evaluated"
       _ -> exitWithErrorMessage "not implemented yet" -- TODO:
   FunctionCall (ExprId fname) args -> case findVarById fname variableScopes of
     Just (VarFunction argNames body) -> if length argNames /= length args
@@ -72,9 +81,11 @@ evaluator' variableScopes (first:rest) = case first of
             VarNumber val -> printStr val
             _ -> exitWithErrorMessage "not implemented yet" -- TODO:
           _ -> exitWithErrorMessage $ "error: variable `" ++ str ++ "` not assigned, variableScopes: " ++ show variableScopes -- TODO:
-        expectedArgs fname expected got = exitWithErrorMessage $ "error: `" ++ fname
-          ++ "` expected " ++ show expected ++ " argument(s), but got "
-          ++ show got
+
+expectedArgs :: String -> Int -> Int -> IO ()
+expectedArgs fname expected got = exitWithErrorMessage $ "error: `" ++ fname
+  ++ "` expected " ++ show expected ++ " argument(s), but got "
+  ++ show got
 
 findMatch :: [[(String, Variable)]] -> Expr -> [Expr] -> (IO (), Maybe Int)
 findMatch = findMatch' 0
@@ -142,6 +153,96 @@ evalExpr _ (ExprString str) = (Just $ VarString str, return ())
 evalExpr variableScopes (ExprId str) = (findVarById str variableScopes, return ())
 evalExpr _ (LambdaDef argNames commandList) = (Just $ VarFunction argNames' commandList, return ())
   where argNames' = map str argNames
+evalExpr variableScopes (FunctionCall (ExprId fname) args) = 
+  case findVarById fname variableScopes of
+    Just (VarFunction argNames body) -> case evalExpr (variableScopesWith argNames) (last body) of
+      (result, io) -> (result, do
+        -- putStrLn "functionCall evaluation"
+        callVarFunc (init body) argNames
+        io
+        )
+    Just _ -> (Nothing, exitWithErrorMessage $ "error: `" ++ fname ++ "` is not a function")
+    Nothing -> case fname of
+      "add" -> if length args /= 2
+        then (Nothing, expectedArgs fname 2 (length args))
+        else addExprs variableScopes (head args) (args !! 1)
+      "sub" -> if length args /= 2
+        then (Nothing, expectedArgs fname 2 (length args))
+        else subExprs variableScopes (head args) (args !! 1)
+      "print" -> if length args /= 1
+        then (Nothing, expectedArgs "print" 1 $ length args)
+        else case head args of
+          ExprString str -> (Nothing, putStrLn str)
+          ExprNumber str -> (Nothing, putStrLn str)
+          ExprId str -> (Nothing, putStrLn str)
+          fc@(FunctionCall _ _) -> case evalExpr variableScopes fc of
+            (Just arg, io) -> (Nothing, do
+              io
+              case arg of
+                VarString str -> putStrLn str
+                VarNumber str -> putStrLn str
+              )
+            (Nothing, io) -> (Nothing, do
+              io
+              exitWithErrorMessage "error: argument expression wasn't evaluated"
+              )
+          _ -> (Nothing, exitWithErrorMessage "not implemented yet") -- TODO:
+      _ -> (Nothing, exitWithErrorMessage $ "error: `" ++ fname ++ "` is not initialized")
+  where callVarFunc body argNames = if length argNames /= length args
+          then expectedArgs fname (length argNames) (length args)
+          else do
+            sequence_ ios
+            evaluator' (variableScopesWith argNames) body
+        mbVar = evalExpr variableScopes 
+        argVars = catMaybes argMaybeVars
+        (argMaybeVars, ios) = unzip evalExprs
+        evalExprs = map (evalExpr variableScopes) args
+        variableScopesWith argNames =
+          zip argNames argVars:variableScopes
+evalExpr variableScopes (PatternMatching switch cases defaultCase) = case evalExpr variableScopes expr of
+  (res, io2) -> (res, do
+    -- putStrLn "patternMatching evaluation"
+    io
+    io2
+    )
+  where (lefts, rights) = unzip cases
+        (io, maybeIndex) = findMatch variableScopes switch lefts
+        expr = case maybeIndex of
+          Just i -> rights !! i
+          Nothing -> defaultCase
+evalExpr _ e = (Nothing, exitWithErrorMessage $ "error: this expression can't be evaluated: " ++ show e)
+
+addExprs :: [[(String, Variable)]] -> Expr -> Expr -> (Maybe Variable, IO ())
+addExprs variableScopes lhs rhs = case evalExpr variableScopes lhs of
+  (Just (VarNumber lhsNum), io1) -> case evalExpr variableScopes rhs of
+    (Just (VarNumber rhsNum), io2) -> if show (read lhsNum::Int) == lhsNum
+      then (Just $ VarNumber $ show $ (read lhsNum::Int) + (read rhsNum::Int), return ())
+      else (Just $ VarNumber $ show $ (read lhsNum::Double) + (read rhsNum::Double), return ())
+    (_, io2) -> (Nothing, do
+      io1
+      io2
+      exitWithErrorMessage "expected number argument"
+      )
+  (_, io1) -> (Nothing, do
+    io1
+    exitWithErrorMessage "expected number argument"
+    )
+
+subExprs :: [[(String, Variable)]] -> Expr -> Expr -> (Maybe Variable, IO ())
+subExprs variableScopes lhs rhs = case evalExpr variableScopes lhs of
+  (Just (VarNumber lhsNum), io1) -> case evalExpr variableScopes rhs of
+    (Just (VarNumber rhsNum), io2) -> if show (read lhsNum::Int) == lhsNum
+      then (Just $ VarNumber $ show $ (read lhsNum::Int) - (read rhsNum::Int), return ())
+      else (Just $ VarNumber $ show $ (read lhsNum::Double) - (read rhsNum::Double), return ())
+    (_, io2) -> (Nothing, do
+      io1
+      io2
+      exitWithErrorMessage "expected number argument"
+      )
+  (_, io1) -> (Nothing, do
+    io1
+    exitWithErrorMessage "expected number argument"
+    )
 
 -- evaluator :: Program -> IO ()
 -- evaluator = mapM_ evalExpr
