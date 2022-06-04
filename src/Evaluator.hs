@@ -4,6 +4,7 @@ import System.Exit (exitFailure)
 import Parser
 import Control.Monad (mplus)
 import Data.List (findIndex, elemIndex)
+import Data.Maybe (catMaybes, mapMaybe)
 
 -- newtype EvaluatorError = EvaluatorError String
 
@@ -32,30 +33,53 @@ evaluator' variableScopes (first:rest) = case first of
     (Just rhsVar, io) -> do
       io
       evalAfterAssignment lhs rhsVar variableScopes rest
-  FunctionCall (ExprId "print") [ExprString str] -> do
-    putStrLn str
-    evaluator' variableScopes rest
-  FunctionCall (ExprId "print") [ExprNumber str] -> do
-    putStrLn str
-    evaluator' variableScopes rest
-  FunctionCall (ExprId "print") [ExprId str] -> case findVarById str variableScopes of
-    Just var -> case var of
-      VarString val -> do
-        putStrLn val
-        evaluator' variableScopes rest
-      VarNumber val -> do
-        putStrLn val
-        evaluator' variableScopes rest
+  FunctionCall (ExprId "print") args -> if length args /= 1
+    then expectedArgs "print" 1 $ length args
+    else case head args of
+      ExprString str -> printStr str
+      ExprNumber str -> printStr str
+      ExprId str -> printId str
       _ -> do
         putStrLn "not implemented yet"
         exitFailure -- TODO:
-    _ -> do
-      -- putStrLn $ "error: variable `" ++ str ++ "` not assigned"
-      putStrLn $ "error: variable `" ++ str ++ "` not assigned, variableScopes: " ++ show variableScopes
-      exitFailure -- TODO:
+  FunctionCall (ExprId fname) args -> case findVarById fname variableScopes of
+    Just (VarFunction argNames body) -> if length argNames /= length args
+      then expectedArgs fname (length argNames) (length args)
+      else do
+        let evalExprs = map (evalExpr variableScopes) args
+        let (argMaybeVars, ios) = unzip evalExprs
+        let argVars = catMaybes argMaybeVars
+        sequence_ ios
+        evaluator' (zip argNames argVars:variableScopes) body
+        evaluator' variableScopes rest
+    Just _ -> do
+      putStrLn $ "error: `" ++ fname ++ "` is not a function"
+      exitFailure
+    Nothing -> do
+      putStrLn $ "error: `" ++ fname ++ "` is not initialized"
+      exitFailure
   _ -> do
     putStrLn "not implemented yet"
     exitFailure -- TODO:
+  where printStr str = do
+          putStrLn str
+          evaluator' variableScopes rest
+        printId str = case findVarById str variableScopes of
+          Just var -> case var of
+            VarString val -> printStr val
+            VarNumber val -> printStr val
+            _ -> do
+              putStrLn "not implemented yet"
+              exitFailure -- TODO:
+          _ -> do
+            -- putStrLn $ "error: variable `" ++ str ++ "` not assigned"
+            putStrLn $ "error: variable `" ++ str ++ "` not assigned, variableScopes: " ++ show variableScopes
+            exitFailure -- TODO:
+        expectedArgs fname expected got = do
+          putStrLn $ "error: `" ++ fname
+                  ++ "` expected " ++ show expected ++ " argument(s), but got "
+                  ++ show got
+          exitFailure
 
 findVarById :: String -> [[(String, Variable)]] -> Maybe Variable
 findVarById name variableScopes = do
@@ -86,6 +110,8 @@ evalExpr :: [[(String, Variable)]] -> Expr -> (Maybe Variable, IO ())
 evalExpr _ (ExprNumber str) = (Just $ VarNumber str, return ())
 evalExpr _ (ExprString str) = (Just $ VarString str, return ())
 evalExpr variableScopes (ExprId str) = (findVarById str variableScopes, return ())
+evalExpr _ (LambdaDef argNames commandList) = (Just $ VarFunction argNames' commandList, return ())
+  where argNames' = map str argNames
 
 -- evaluator :: Program -> IO ()
 -- evaluator = mapM_ evalExpr
