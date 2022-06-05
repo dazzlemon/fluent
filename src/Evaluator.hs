@@ -225,18 +225,18 @@ evalExpr _ e = (Nothing, exitWithErrorMessage $ "error: this expression can't be
 type VarScopes = [[(String, Variable)]]
 type EvalState = (VarScopes, IO ())
 
+type BinaryFun a = (a -> a -> a)
+
 -- first two args are the same function (but for Int and Double)
 -- second is VarScopes to evaluate args for the function
 -- third and fourth are args
 --   that will merged into new value using first two functions
 -- returns result of merging and IO that contains messages,
 --   and may end with exitFailure
-mergeTwoExprs :: (Int -> Int -> Int)
-       -> (Double -> Double -> Double)
-       -> VarScopes
-       -> Expr
-       -> Expr
-       -> (Maybe Variable, IO ())
+mergeTwoExprs :: BinaryFun Int -> BinaryFun Double
+              -> VarScopes
+              -> Expr -> Expr
+              -> (Maybe Variable, IO ())
 mergeTwoExprs f1 f2 varScopes lhs rhs = (res, io)
   where (res, (_, io)) = runState binExprs state_
         state_ = (varScopes, return ())
