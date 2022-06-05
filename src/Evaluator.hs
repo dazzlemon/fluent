@@ -8,6 +8,7 @@ import Control.Monad (mplus)
 import Control.Monad.State
 import Data.List (findIndex, elemIndex)
 import Data.Maybe (catMaybes, mapMaybe)
+import Control.Monad.Trans.Maybe
 
 -- newtype EvaluatorError = EvaluatorError String
 
@@ -240,18 +241,13 @@ type VarScopes = [[(String, Variable)]]
 type EvalState = (VarScopes, IO ())
 
 subExprs' :: Expr -> Expr -> State EvalState (Maybe Variable)
-subExprs' lhs rhs = do
+subExprs' lhs rhs = runMaybeT $ do
   lhsNum <- evalNum' lhs
-  case lhsNum of
-    Just lhsStr -> do
-      rhsNum <- evalNum' rhs
-      case rhsNum of
-       Just rhsStr -> addStrNums' lhsStr rhsStr
-       _ -> return Nothing
-    _ -> return Nothing
+  rhsNum <- evalNum' rhs
+  addStrNums' lhsNum rhsNum
 
-evalNum' :: Expr -> State EvalState (Maybe String)
-evalNum' expr = do
+evalNum' :: Expr -> MaybeT (State EvalState) String 
+evalNum' expr = MaybeT $ do
   (varScopes, io) <- get
   case evalExpr varScopes expr of
     (res, io') -> do
@@ -265,8 +261,8 @@ evalNum' expr = do
             put (varScopes, mappend io $ exitWithErrorMessage msg)
             return Nothing
 
-addStrNums' :: String -> String -> State EvalState (Maybe Variable)
-addStrNums' lhsStr rhsStr = state f
+addStrNums' :: String -> String -> MaybeT (State EvalState) Variable
+addStrNums' lhsStr rhsStr = MaybeT $ state f
   where f state = (Just $ VarNumber result, state)
         result = if show (read lhsStr::Int) == lhsStr
           then show $ (read lhsStr::Int)    - (read rhsStr::Int) 
