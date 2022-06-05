@@ -167,12 +167,6 @@ evalExpr variableScopes (FunctionCall (ExprId fname) args) =
         )
     Just _ -> (Nothing, exitWithErrorMessage $ "error: `" ++ fname ++ "` is not a function")
     Nothing -> case fname of
-      "add" -> if length args /= 2
-        then (Nothing, expectedArgs fname 2 (length args))
-        else addExprs variableScopes (head args) (args !! 1)
-      "sub" -> if length args /= 2
-        then (Nothing, expectedArgs fname 2 (length args))
-        else subExprs variableScopes (head args) (args !! 1)
       "print" -> if length args /= 1
         then (Nothing, expectedArgs "print" 1 $ length args)
         else case head args of
@@ -191,6 +185,7 @@ evalExpr variableScopes (FunctionCall (ExprId fname) args) =
               exitWithErrorMessage "error: argument expression wasn't evaluated"
               )
           _ -> (Nothing, exitWithErrorMessage "not implemented yet") -- TODO:
+      _ | fname `elem` ["add", "sub"] -> binaryNumFun
       _ -> (Nothing, exitWithErrorMessage $ "error: `" ++ fname ++ "` is not initialized")
   where callVarFunc body argNames = if length argNames /= length args
           then expectedArgs fname (length argNames) (length args)
@@ -203,6 +198,17 @@ evalExpr variableScopes (FunctionCall (ExprId fname) args) =
         evalExprs = map (evalExpr variableScopes) args
         variableScopesWith argNames =
           zip argNames argVars:variableScopes
+        binaryNumFun = if argCount /= 2
+            then err
+            else mergeTwoExprs f1 f2 variableScopes a1 a2
+          where a1 = head args
+                a2 = args !! 1
+                argCount = length args
+                err = (Nothing, expectedArgs fname 2 argCount)
+                (f1, f2) = case fname of
+                  "add" -> ((+), (+))
+                  "sub" -> ((-), (-))
+
 evalExpr variableScopes (PatternMatching switch cases defaultCase) = case evalExpr variableScopes expr of
   (res, io2) -> (res, do
     -- putStrLn "patternMatching evaluation"
@@ -216,38 +222,33 @@ evalExpr variableScopes (PatternMatching switch cases defaultCase) = case evalEx
           Nothing -> defaultCase
 evalExpr _ e = (Nothing, exitWithErrorMessage $ "error: this expression can't be evaluated: " ++ show e)
 
-addExprs :: [[(String, Variable)]] -> Expr -> Expr -> (Maybe Variable, IO ())
-addExprs variableScopes lhs rhs = case evalExpr variableScopes lhs of
-  (Just (VarNumber lhsNum), io1) -> case evalExpr variableScopes rhs of
-    (Just (VarNumber rhsNum), io2) -> if show (read lhsNum::Int) == lhsNum
-      then (Just $ VarNumber $ show $ (read lhsNum::Int) + (read rhsNum::Int), return ())
-      else (Just $ VarNumber $ show $ (read lhsNum::Double) + (read rhsNum::Double), return ())
-    (_, io2) -> (Nothing, do
-      io1
-      io2
-      exitWithErrorMessage "expected number argument"
-      )
-  (_, io1) -> (Nothing, do
-    io1
-    exitWithErrorMessage "expected number argument"
-    )
-
-subExprs :: [[(String, Variable)]] -> Expr -> Expr -> (Maybe Variable, IO ())
-subExprs variableScopes lhs rhs =
-  case runState (subExprs' lhs rhs) (variableScopes, return ()) of
-    (res, (varsScopes, io)) -> (res, io)
-
 type VarScopes = [[(String, Variable)]]
 type EvalState = (VarScopes, IO ())
 
-subExprs' :: Expr -> Expr -> State EvalState (Maybe Variable)
-subExprs' lhs rhs = runMaybeT $ do
-  lhsNum <- evalNum' lhs
-  rhsNum <- evalNum' rhs
-  addStrNums' lhsNum rhsNum
+-- first two args are the same function (but for Int and Double)
+-- second is VarScopes to evaluate args for the function
+-- third and fourth are args
+--   that will merged into new value using first two functions
+-- returns result of merging and IO that contains messages,
+--   and may end with exitFailure
+mergeTwoExprs :: (Int -> Int -> Int)
+       -> (Double -> Double -> Double)
+       -> VarScopes
+       -> Expr
+       -> Expr
+       -> (Maybe Variable, IO ())
+mergeTwoExprs f1 f2 varScopes lhs rhs = (res, io)
+  where (res, (_, io)) = runState binExprs state_
+        state_ = (varScopes, return ())
+        binExprs = runMaybeT $ do
+          lhsStr <- evalNum lhs
+          rhsStr <- evalNum rhs
+          return $ VarNumber $ if show (read lhsStr::Int) == lhsStr
+            then show $ f1 (read lhsStr) (read rhsStr) 
+            else show $ f2 (read lhsStr) (read rhsStr)
 
-evalNum' :: Expr -> MaybeT (State EvalState) String 
-evalNum' expr = MaybeT $ do
+evalNum :: Expr -> MaybeT (State EvalState) String 
+evalNum expr = MaybeT $ do
   (varScopes, io) <- get
   case evalExpr varScopes expr of
     (res, io') -> do
@@ -260,10 +261,3 @@ evalNum' expr = MaybeT $ do
             (varScopes, io) <- get
             put (varScopes, mappend io $ exitWithErrorMessage msg)
             return Nothing
-
-addStrNums' :: String -> String -> MaybeT (State EvalState) Variable
-addStrNums' lhsStr rhsStr = MaybeT $ state f
-  where f state = (Just $ VarNumber result, state)
-        result = if show (read lhsStr::Int) == lhsStr
-          then show $ (read lhsStr::Int)    - (read rhsStr::Int) 
-          else show $ (read lhsStr::Double) - (read rhsStr::Double)
