@@ -35,6 +35,7 @@ library
       src
   build-depends:
       base >=4.7 && <5
+    , mtl
   default-language: Haskell2010
 
 executable fluent-exe
@@ -47,6 +48,7 @@ executable fluent-exe
   build-depends:
       base >=4.7 && <5
     , fluent
+    , mtl
   default-language: Haskell2010
 
 test-suite fluent-test
@@ -61,4 +63,5 @@ test-suite fluent-test
       HUnit
     , base >=4.7 && <5
     , fluent
+    , mtl
   default-language: Haskell2010

@@ -1,8 +1,11 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 module Evaluator where
 
 import System.Exit (exitFailure)
 import Parser
 import Control.Monad (mplus)
+import Control.Monad.State
 import Data.List (findIndex, elemIndex)
 import Data.Maybe (catMaybes, mapMaybe)
 
@@ -229,50 +232,42 @@ addExprs variableScopes lhs rhs = case evalExpr variableScopes lhs of
     )
 
 subExprs :: [[(String, Variable)]] -> Expr -> Expr -> (Maybe Variable, IO ())
--- subExprs variableScopes lhs rhs = case evalExpr variableScopes lhs of
---   (Just (VarNumber lhsNum), io1) -> case evalExpr variableScopes rhs of
---     (Just (VarNumber rhsNum), io2) -> if show (read lhsNum::Int) == lhsNum
---       then (Just $ VarNumber $ show $ (read lhsNum::Int) - (read rhsNum::Int), return ())
---       else (Just $ VarNumber $ show $ (read lhsNum::Double) - (read rhsNum::Double), return ())
---     (_, io2) -> (Nothing, do
---       io1
---       io2
---       exitWithErrorMessage "expected number argument"
---       )
---   (_, io1) -> (Nothing, do
---     io1
---     exitWithErrorMessage "expected number argument"
---     )
-
-subExprs variableScopes lhs rhs = case subExprs' lhs rhs (variableScopes, return ()) of
-  (res, (varsScopes, io)) -> (res, io)
+subExprs variableScopes lhs rhs =
+  case runState (subExprs' lhs rhs) (variableScopes, return ()) of
+    (res, (varsScopes, io)) -> (res, io)
 
 type VarScopes = [[(String, Variable)]]
 type EvalState = (VarScopes, IO ())
 
-subExprs' :: Expr -> Expr -> EvalState -> (Maybe Variable, EvalState)
-subExprs' lhs rhs state = let
-  (lhsNum, state1) = evalNum' lhs state
-  (rhsNum, state2) = evalNum' rhs state1
-  in case lhsNum of
-    Just lhsStr -> case rhsNum of
-      Just rhsStr -> if show (read lhsStr::Int) == lhsStr
-        then (Just $ VarNumber $ show $ (read lhsStr::Int)    - (read rhsStr::Int),    state2)
-        else (Just $ VarNumber $ show $ (read lhsStr::Double) - (read rhsStr::Double), state2)
-      _ -> (Nothing, state2)
-    _ -> (Nothing, state1)
+subExprs' :: Expr -> Expr -> State EvalState (Maybe Variable)
+subExprs' lhs rhs = do
+  lhsNum <- evalNum' lhs
+  case lhsNum of
+    Just lhsStr -> do
+      rhsNum <- evalNum' rhs
+      case rhsNum of
+       Just rhsStr -> addStrNums' lhsStr rhsStr
+       _ -> return Nothing
+    _ -> return Nothing
 
-evalNum' :: Expr -> EvalState -> (Maybe String, EvalState)
-evalNum' expr (varScopes, io) = case evalExpr varScopes expr of
-  (Just (VarNumber numStr), io') -> (Just numStr, (varScopes, mappend io io'))
-  (Nothing, io') -> err io' "error: can't evaluate expr"
-  (_, io') -> err io' "expected number argument"
-  where err io' msg =
-          (Nothing, (varScopes, mconcat [io, io', exitWithErrorMessage msg])) 
+evalNum' :: Expr -> State EvalState (Maybe String)
+evalNum' expr = do
+  (varScopes, io) <- get
+  case evalExpr varScopes expr of
+    (res, io') -> do
+      put (varScopes, mappend io io')
+      case res of
+        Just (VarNumber numStr) -> return (Just numStr)
+        Nothing -> err "error: can't evaluate expr"
+        _ -> err "expected number argument"
+    where err msg = do
+            (varScopes, io) <- get
+            put (varScopes, mappend io $ exitWithErrorMessage msg)
+            return Nothing
 
-subNums :: Read a => Num a => String -> String -> a
-subNums lhs rhs = read lhs - read rhs
-
-evalNum :: [[(String, Variable)]] -> Expr -> (Maybe String, IO ())
-evalNum variableScopes expr = case evalExpr variableScopes expr of
-  (Just (VarNumber numStr), io) -> (Just numStr, io)
+addStrNums' :: String -> String -> State EvalState (Maybe Variable)
+addStrNums' lhsStr rhsStr = state f
+  where f state = (Just $ VarNumber result, state)
+        result = if show (read lhsStr::Int) == lhsStr
+          then show $ (read lhsStr::Int)    - (read rhsStr::Int) 
+          else show $ (read lhsStr::Double) - (read rhsStr::Double)
