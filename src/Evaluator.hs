@@ -265,9 +265,10 @@ subExprs' lhs rhs state = let
 evalNum' :: Expr -> EvalState -> (Maybe String, EvalState)
 evalNum' expr (varScopes, io) = case evalExpr varScopes expr of
   (Just (VarNumber numStr), io') -> (Just numStr, (varScopes, mappend io io'))
-  (Nothing, io') -> err "error: can't evaluate expr"
-  (_, io') -> err "expected number argument"
-  where err msg = (Nothing, (varScopes, mappend io (exitWithErrorMessage msg))) 
+  (Nothing, io') -> err io' "error: can't evaluate expr"
+  (_, io') -> err io' "expected number argument"
+  where err io' msg =
+          (Nothing, (varScopes, mconcat [io, io', exitWithErrorMessage msg])) 
 
 subNums :: Read a => Num a => String -> String -> a
 subNums lhs rhs = read lhs - read rhs
