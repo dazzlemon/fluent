@@ -34,14 +34,40 @@ evaluator' variableScopes [] = (variableScopes, return ())
 evaluator' variableScopes (first:rest) = case first of
   Assignment (ExprId lhs) rhs -> case evalExpr variableScopes rhs of
     (Just rhsVar, io) ->
-      let variableScopes' = variableScopesWith lhs rhsVar variableScopes
-      in evaluator' variableScopes' rest
-  FunctionCall {} -> case evalExpr variableScopes first of
-    (_, io) -> (variableScopes, io)
-  PatternMatching {} -> case evalExpr variableScopes first of
-    (_, io) -> (variableScopes, io)
+      let newKV = (lhs, rhsVar)
+          currentScope = head variableScopes
+          currentScope' =
+            -- try findind variable in current skope
+            case findIndex ((== lhs) . fst) currentScope of
+              --   change it
+              Just i -> replaceNth i newKV currentScope
+              --   otherwise add it
+              _ -> newKV:currentScope
+          variableScopes' = currentScope':tail variableScopes
+          -- maybeVariableScopes = do
+          --   -- find first (deepest possible) variableScope
+          --   -- that contains var to be assigned to
+          --   i <- findIndex (containsVar lhs) variableScopes
+          --   let ith = variableScopes !! i
+          --   -- if there is a scope that has var assigned to
+          --   -- find index of the var in the scope
+          --   j <- findIndex ((== lhs) . fst) ith
+          --   -- replace j-th variable value with rhs
+          --   let ith' = replaceNth j newKV ith
+          --   -- replace i-th scope with modified one:
+          --   return $ replaceNth i ith' variableScopes
+          -- variableScopes' = case maybeVariableScopes of
+          --   Just r -> r
+          --   Nothing -> (newKV:head variableScopes):tail variableScopes
+      in case evaluator' variableScopes' rest of
+        (vs, io') -> (vs, io >> io')
+  FunctionCall {} -> evalExpr'
+  PatternMatching {} -> evalExpr'
   NullExpr -> evaluator' variableScopes rest -- just skip it
   other -> (variableScopes, die $ "error: invalid comand: " ++ show other)
+  where evalExpr' = case evalExpr variableScopes first of
+          (_, io1) -> case evaluator' variableScopes rest of
+            (varScopes, io2) -> (variableScopes, io1 >> io2)
 
 expectedArgs :: String -> Int -> Int -> IO ()
 expectedArgs fname expected got = die $ "error: `" ++ fname
@@ -82,24 +108,6 @@ findVarById name variableScopes = do
 
 containsVar :: String -> [(String, Variable)] -> Bool
 containsVar name = any ((== name) . fst)
-
-variableScopesWith :: String -> Variable -> VarScopes -> VarScopes
-variableScopesWith lhs rhs variableScopes = case maybeVariableScopes of
-  Just r -> r
-  Nothing -> (newKV:head variableScopes):tail variableScopes
-  where newKV = (lhs, rhs)
-        maybeVariableScopes = do
-          -- find first (deepest possible) variableScope
-          -- that contains var to be assigned to
-          i <- findIndex (containsVar lhs) variableScopes
-          let ith = variableScopes !! i
-          -- if there is a scope that has var assigned to
-          -- find index of the var in the scope
-          j <- findIndex ((== lhs) . fst) ith
-          -- replace j-th variable value with rhs
-          let ith' = replaceNth j newKV ith
-          -- replace i-th scope with modified one:
-          return $ replaceNth i ith' variableScopes
         
 replaceNth :: Int -> a -> [a] -> [a]
 replaceNth _ _ [] = []
@@ -127,13 +135,10 @@ evalExpr variableScopes (FunctionCall (ExprId fname) args) =
         else case head args of
           ExprString str -> (Nothing, putStrLn str)
           ExprNumber str -> (Nothing, putStrLn str)
-          ExprId str -> (Nothing, putStrLn str)
+          ExprId str -> case findVarById str variableScopes of
+            Just var -> (Nothing, printVar var)
           fc@(FunctionCall _ _) -> case evalExpr variableScopes fc of
-            (Just arg, io) -> (Nothing, io >>
-              case arg of
-                VarString str -> putStrLn str
-                VarNumber str -> putStrLn str
-              )
+            (Just arg, io) -> (Nothing, io >> printVar arg)
             (Nothing, io) -> (Nothing, io)
             -- (Nothing, io) -> (Nothing, io >> die "error: argument expression wasn't evaluated")
           _ -> (Nothing, die "not implemented yet") -- TODO:
@@ -154,6 +159,9 @@ evalExpr variableScopes (FunctionCall (ExprId fname) args) =
                 (f1, f2) = case fname of
                   "add" -> ((+), (+))
                   "sub" -> ((-), (-))
+        printVar var = case var of
+          VarString str -> putStrLn str
+          VarNumber str -> putStrLn str
 
 evalExpr variableScopes (PatternMatching switch cases defaultCase) = case evalExpr variableScopes expr of
   (res, io2) -> (res, io >> io2)

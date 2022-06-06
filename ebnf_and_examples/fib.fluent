@@ -1,8 +1,10 @@
+notzero <- 1;
+
 fib <- (n) {
-	zero <- 0;
+	notzero <- 0;
 	one <- 1;
   match n {
-    0 -> zero;
+    0 -> notzero;
     1 -> one;
     _ -> add(fib(sub(n 1)) fib(sub(n 2)));
   };
@@ -21,3 +23,7 @@ printFib <- (n) {
 };
 
 fromTo(0 8 printFib);
+
+print('');
+print('notzero:');
+print(notzero);
