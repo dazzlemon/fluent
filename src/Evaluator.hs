@@ -44,21 +44,6 @@ evaluator' variableScopes (first:rest) = case first of
               --   otherwise add it
               _ -> newKV:currentScope
           variableScopes' = currentScope':tail variableScopes
-          -- maybeVariableScopes = do
-          --   -- find first (deepest possible) variableScope
-          --   -- that contains var to be assigned to
-          --   i <- findIndex (containsVar lhs) variableScopes
-          --   let ith = variableScopes !! i
-          --   -- if there is a scope that has var assigned to
-          --   -- find index of the var in the scope
-          --   j <- findIndex ((== lhs) . fst) ith
-          --   -- replace j-th variable value with rhs
-          --   let ith' = replaceNth j newKV ith
-          --   -- replace i-th scope with modified one:
-          --   return $ replaceNth i ith' variableScopes
-          -- variableScopes' = case maybeVariableScopes of
-          --   Just r -> r
-          --   Nothing -> (newKV:head variableScopes):tail variableScopes
       in case evaluator' variableScopes' rest of
         (vs, io') -> (vs, io >> io')
   FunctionCall {} -> evalExpr'
