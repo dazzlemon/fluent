@@ -136,14 +136,14 @@ evalExpr variableScopes (FunctionCall (ExprId fname) args) =
         variableScopesWith argNames = zip argNames argVars:variableScopes
         binaryNumFun = if argCount /= 2
             then err
-            else mergeTwoExprs f1 f2 variableScopes a1 a2
+            else mergeTwoExprs f variableScopes a1 a2
           where a1 = head args
                 a2 = args !! 1
                 argCount = length args
                 err = (Nothing, expectedArgs fname 2 argCount)
-                (f1, f2) = case fname of
-                  "add" -> ((+), (+))
-                  "sub" -> ((-), (-))
+                f = case fname of
+                  "add" -> (+)
+                  "sub" -> (-)
         printVar var = case var of
           VarString str -> putStrLn str
           VarNumber str -> putStrLn str
@@ -160,25 +160,26 @@ evalExpr _ e = (Nothing, die $ "error: this expression can't be evaluated: " ++ 
 
 type BinaryFun a = (a -> a -> a)
 
--- first two args are the same function (but for Int and Double)
+-- first arg is function to merge lhs and rhs
 -- second is VarScopes to evaluate args for the function
 -- third and fourth are args
 --   that will merged into new value using first two functions
 -- returns result of merging and IO that contains messages,
 --   and may end with exitFailure
-mergeTwoExprs :: BinaryFun Int -> BinaryFun Double
+mergeTwoExprs :: BinaryFun Double
               -> VarScopes
               -> Expr -> Expr
               -> (Maybe Variable, IO ())
-mergeTwoExprs f1 f2 varScopes lhs rhs = (res, io)
+mergeTwoExprs f varScopes lhs rhs = (res, io)
   where (res, (_, io)) = runState binExprs state_
         state_ = (varScopes, return ())
         binExprs = runMaybeT $ do
           lhsStr <- evalNum lhs
           rhsStr <- evalNum rhs
-          return $ VarNumber $ if show (read lhsStr::Int) == lhsStr
-            then show $ f1 (read lhsStr) (read rhsStr) 
-            else show $ f2 (read lhsStr) (read rhsStr)
+          let res = f (read lhsStr) (read rhsStr)
+          return $ VarNumber $ if '.' `elem` lhsStr
+            then show res
+            else show (floor res::Int) 
 
 evalNum :: Expr -> MaybeT (State EvalState) String 
 evalNum expr = MaybeT $ do
