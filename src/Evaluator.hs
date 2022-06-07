@@ -136,7 +136,9 @@ evalExpr variableScopes (FunctionCall (ExprId fname, pos) args) =
         variableScopesWith argNames = zip argNames argVars:variableScopes
         binaryNumFun = if argCount /= 2
             then err
-            else mergeTwoExprs f variableScopes a1 a2
+            else case mergeTwoExprs f variableScopes a1 a2 of
+              Right (res, io) -> (Just res, io)
+              Left e -> (Nothing, die $ what e)
           where a1 = head args
                 a2 = args !! 1
                 argCount = length args
@@ -160,29 +162,22 @@ evalExpr _ e = (Nothing, die $ "error: this expression can't be evaluated: " ++ 
 
 type BinaryFun a = (a -> a -> a)
 
--- first arg is function to merge lhs and rhs
--- second is VarScopes to evaluate args for the function
--- third and fourth are args
---   that will merged into new value using first two functions
--- returns result of merging and IO that contains messages,
---   and may end with exitFailure
 mergeTwoExprs :: BinaryFun Double
               -> VarScopes
               -> ExprPos -> ExprPos
-              -> (Maybe Variable, IO ())
-mergeTwoExprs f varScopes lhs rhs = case evalNum lhs varScopes of
-  Right (lhsStr, io) -> case evalNum rhs varScopes of
-    Right (rhsStr, io) -> let resStr = if '.' `elem` lhsStr
-                                        then show res
-                                        else show (floor res::Int) 
-                              res = f (read lhsStr) (read rhsStr)
-      in (Just $ VarNumber resStr, io)
-    Left e -> (Nothing, die $ what e) -- TODO: stackTrace
-  Left e -> (Nothing, die $ what e) -- TODO: stackTrace
+              -> Either EvaluatorError (Variable, IO ())
+mergeTwoExprs f varScopes lhs rhs = do
+  (lhsStr, io1) <- evalNum lhs varScopes
+  (rhsStr, io2) <- evalNum rhs varScopes
+  let resStr = if '.' `elem` lhsStr
+                then show res
+                else show (floor res::Int) 
+      res = f (read lhsStr) (read rhsStr)
+  return (VarNumber resStr, io1 >> io2)
 
 data EvaluatorError = InitialError { pos::Int, what::String }
-                    | StackTrace { pos::Int, what::String
-                                 , trace::EvaluatorError }
+                    | StackTrace   { pos::Int, what::String
+                                   , trace::EvaluatorError }
 
 evalNum :: ExprPos -> VarScopes -> Either EvaluatorError (String, IO ())
 evalNum (expr, pos) varScopes = case evalExpr varScopes expr of
