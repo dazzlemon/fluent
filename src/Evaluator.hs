@@ -137,8 +137,8 @@ evalExpr variableScopes (FunctionCall (ExprId fname, pos) args) =
         binaryNumFun = if argCount /= 2
             then err
             else case mergeTwoExprs f variableScopes a1 a2 of
-              Right (res, io) -> (Just res, io)
-              Left e -> (Nothing, die $ what e)
+              (Right res, io) -> (Just res, io)
+              (Left e, io) -> (Nothing, io >> (die $ what e))
           where a1 = head args
                 a2 = args !! 1
                 argCount = length args
@@ -165,15 +165,16 @@ type BinaryFun a = (a -> a -> a)
 mergeTwoExprs :: BinaryFun Double
               -> VarScopes
               -> ExprPos -> ExprPos
-              -> Either EvaluatorError (Variable, IO ())
-mergeTwoExprs f varScopes lhs rhs = do
-  (lhsStr, io1) <- evalNum lhs varScopes
-  (rhsStr, io2) <- evalNum rhs varScopes
-  let resStr = if '.' `elem` lhsStr
-                then show res
-                else show (floor res::Int) 
-      res = f (read lhsStr) (read rhsStr)
-  return (VarNumber resStr, io1 >> io2)
+              -> (Either EvaluatorError Variable, IO ())
+mergeTwoExprs f varScopes lhs rhs = case evalNum lhs varScopes of
+  Right (lhsStr, io1) -> case evalNum rhs varScopes of
+    Right (rhsStr, io2) -> let resStr = if '.' `elem` lhsStr
+                                    then show res
+                                    else show (floor res::Int) 
+                               res = f (read lhsStr) (read rhsStr)
+                           in (Right $ VarNumber resStr, io1 >> io2)
+    Left e -> (Left e, io1)
+  Left e -> (Left e, return ())
 
 data EvaluatorError = InitialError { pos::Int, what::String }
                     | StackTrace   { pos::Int, what::String

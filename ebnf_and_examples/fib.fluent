@@ -27,3 +27,11 @@ fromTo(0 8 printFib);
 print('');
 print('notzero:');
 print(notzero);
+
+
+aboba <- (x) {
+	print('aboba');
+	add(x 2);
+};
+
+print(add(aboba(3) 'test'));
