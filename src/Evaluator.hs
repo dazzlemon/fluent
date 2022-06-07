@@ -137,8 +137,8 @@ evalExpr variableScopes (FunctionCall (ExprId fname, pos) args) =
         binaryNumFun = if argCount /= 2
             then err
             else mergeTwoExprs f variableScopes a1 a2
-          where a1 = fst $ head args
-                a2 = fst $ args !! 1
+          where a1 = head args
+                a2 = args !! 1
                 argCount = length args
                 err = (Nothing, expectedArgs fname 2 argCount)
                 f = case fname of
@@ -168,31 +168,25 @@ type BinaryFun a = (a -> a -> a)
 --   and may end with exitFailure
 mergeTwoExprs :: BinaryFun Double
               -> VarScopes
-              -> Expr -> Expr
+              -> ExprPos -> ExprPos
               -> (Maybe Variable, IO ())
-mergeTwoExprs f varScopes lhs rhs = (res, io)
-  where (res, (_, io)) = runState binExprs state_
-        state_ = (varScopes, return ())
-        binExprs = runMaybeT $ do
-          lhsStr <- evalNum lhs
-          rhsStr <- evalNum rhs
-          let res = f (read lhsStr) (read rhsStr)
-          return $ VarNumber $ if '.' `elem` lhsStr
-            then show res
-            else show (floor res::Int) 
+mergeTwoExprs f varScopes lhs rhs = case evalNum lhs varScopes of
+  Right (lhsStr, io) -> case evalNum rhs varScopes of
+    Right (rhsStr, io) -> let resStr = if '.' `elem` lhsStr
+                                        then show res
+                                        else show (floor res::Int) 
+                              res = f (read lhsStr) (read rhsStr)
+      in (Just $ VarNumber resStr, io)
+    Left e -> (Nothing, die $ what e) -- TODO: stackTrace
+  Left e -> (Nothing, die $ what e) -- TODO: stackTrace
 
-evalNum :: Expr -> MaybeT (State EvalState) String 
-evalNum expr = MaybeT $ do
-  (varScopes, io) <- get
-  case evalExpr varScopes expr of
-    (res, io') -> do
-      put (varScopes, io >> io')
-      case res of
-        Just (VarNumber numStr) -> return (Just numStr)
-        Nothing -> err "error: can't evaluate expr"
-        _ -> err "expected number argument"
-    where err msg = do
-            (varScopes, io) <- get
-            -- put (varScopes, io >> die msg)
-            put (varScopes, io)
-            return Nothing
+data EvaluatorError = InitialError { pos::Int, what::String }
+                    | StackTrace { pos::Int, what::String
+                                 , trace::EvaluatorError }
+
+evalNum :: ExprPos -> VarScopes -> Either EvaluatorError (String, IO ())
+evalNum (expr, pos) varScopes = case evalExpr varScopes expr of
+  (res, io') -> case res of
+    Just (VarNumber numStr) -> Right (numStr, io')
+    Nothing -> Left $ InitialError pos "can't evaluate expr"
+    _ -> Left $ InitialError pos "expected number argument"
