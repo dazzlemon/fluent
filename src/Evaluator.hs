@@ -31,8 +31,8 @@ data Variable = VarNumber { varStr::String }
 
 evaluator' :: VarScopes -> Program -> EvalState
 evaluator' variableScopes [] = (variableScopes, return ())
-evaluator' variableScopes (first:rest) = case first of
-  Assignment (ExprId lhs) rhs -> case evalExpr variableScopes rhs of
+evaluator' variableScopes ((first, pos):rest) = case first of
+  Assignment (ExprId lhs, pos1) (rhs, pos2) -> case evalExpr variableScopes rhs of
     (Just rhsVar, io) ->
       let newKV = (lhs, rhsVar)
           currentScope = head variableScopes
@@ -105,19 +105,19 @@ evalExpr _ (ExprNumber str) = (Just $ VarNumber str, return ())
 evalExpr _ (ExprString str) = (Just $ VarString str, return ())
 evalExpr variableScopes (ExprId str) = (findVarById str variableScopes, return ())
 evalExpr _ (LambdaDef argNames commandList) = (Just $ VarFunction argNames' commandList, return ())
-  where argNames' = map str argNames
-evalExpr variableScopes (FunctionCall (ExprId fname) args) = 
+  where argNames' = map (str . fst) argNames
+evalExpr variableScopes (FunctionCall (ExprId fname, pos) args) = 
   case findVarById fname variableScopes of
     Just (VarFunction argNames body) -> if length argNames /= length args
       then (Nothing, expectedArgs fname (length argNames) (length args))
       else case evaluator' (variableScopesWith argNames) (init body) of
-        (varScopes', io1) -> case evalExpr varScopes' (last body) of
+        (varScopes', io1) -> case evalExpr varScopes' (fst (last body)) of
           (res, io2) -> (res, io1 >> io2)
     Just _ -> (Nothing, die $ "error: `" ++ fname ++ "` is not a function")
     Nothing -> case fname of
       "print" -> if length args /= 1
         then (Nothing, expectedArgs "print" 1 $ length args)
-        else case head args of
+        else case fst $ head args of
           ExprString str -> (Nothing, putStrLn str)
           ExprNumber str -> (Nothing, putStrLn str)
           ExprId str -> case findVarById str variableScopes of
@@ -132,13 +132,13 @@ evalExpr variableScopes (FunctionCall (ExprId fname) args) =
   where mbVar = evalExpr variableScopes 
         argVars = catMaybes argMaybeVars
         (argMaybeVars, ios) = unzip evalExprs
-        evalExprs = map (evalExpr variableScopes) args
+        evalExprs = map (evalExpr variableScopes . fst) args
         variableScopesWith argNames = zip argNames argVars:variableScopes
         binaryNumFun = if argCount /= 2
             then err
             else mergeTwoExprs f variableScopes a1 a2
-          where a1 = head args
-                a2 = args !! 1
+          where a1 = fst $ head args
+                a2 = fst $ args !! 1
                 argCount = length args
                 err = (Nothing, expectedArgs fname 2 argCount)
                 f = case fname of
@@ -148,11 +148,11 @@ evalExpr variableScopes (FunctionCall (ExprId fname) args) =
           VarString str -> putStrLn str
           VarNumber str -> putStrLn str
 
-evalExpr variableScopes (PatternMatching switch cases defaultCase) = case evalExpr variableScopes expr of
+evalExpr variableScopes (PatternMatching (switch, _) cases defaultCase) = case evalExpr variableScopes expr of
   (res, io2) -> (res, io >> io2)
   where (lefts, rights) = unzip cases
-        (io, maybeIndex) = findMatch variableScopes switch lefts
-        expr = case maybeIndex of
+        (io, maybeIndex) = findMatch variableScopes switch (map fst lefts)
+        expr = fst $ case maybeIndex of
           Just i -> rights !! i
           Nothing -> defaultCase
 evalExpr _ NullExpr = (Just VarNull, return ()) 

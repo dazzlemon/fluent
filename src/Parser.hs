@@ -8,8 +8,11 @@ import Data.Function (on)
 import Data.Data (Typeable, Data, Constr, toConstr)
 import Data.Maybe (listToMaybe)
 
+-- int represents # of token, needed for better error messages in Evaluator.hs
+type ExprPos = (Expr, Int)
+
 -- program ::= { command ';'}
-type Program = [Expr]
+type Program = [ExprPos]
 
 -- expr ::= number
 data Expr = ExprNumber { str::String }
@@ -19,30 +22,30 @@ data Expr = ExprNumber { str::String }
           | ExprId { str::String }
 --        | functionCall
   -- functionCall ::= id '(' {expr} ')'
-          | FunctionCall { id::Expr, args::[Expr] }
+          | FunctionCall { id::ExprPos, args::[ExprPos] }
 --        | '_'
           | WildCardExpr
 --        | "NULL"
           | NullExpr
 --        | namedTupleAcess
-          | NamedTuppleAccess { tupleName::Expr, fieldName::Expr }
+          | NamedTuppleAccess { tupleName::ExprPos, fieldName::ExprPos }
 --        | lambdaDef
 -- lambdaDef ::= '(' {id} ')' 
 -- 	'{' { command ';'} '}'
-          | LambdaDef { argNames::[Expr], commandList::[Expr] }
-          | Assignment { lhs::Expr, rhs::Expr }
+          | LambdaDef { argNames::[ExprPos], commandList::[ExprPos] }
+          | Assignment { lhs::ExprPos, rhs::ExprPos }
   -- patternMatching ::= 'match' expr '{'
   --   {expr '->' expr ';'}
   --   '_' '->' expr ';' '}'
-          | PatternMatching { switch::Expr
-                            , cases::[(Expr, Expr)]
-                            , defaultCase::Expr
+          | PatternMatching { switch::ExprPos
+                            , cases::[(ExprPos, ExprPos)]
+                            , defaultCase::ExprPos
                             }
 -- tuple ::= '[' {expr} ']'
-          | Tuple { values::[Expr] }
+          | Tuple { values::[ExprPos] }
 -- namedTupleField ::= id '=' expr
 -- namedTuple ::= '[' {namedTupleField} ']'
-          | NamedTuple { keyValuePairs::[(Expr, Expr)] }
+          | NamedTuple { keyValuePairs::[(ExprPos, ExprPos)] }
           | Empty -- kinda like TokenEOF
           deriving (Show, Data, Eq)
 
@@ -51,7 +54,7 @@ newtype ParserError = ParserError String deriving (Show, Data, Eq)
 --               pos    tokens
 type Subparser = Int -> [Token]
 --                      (unexpectedTokenOffset, err) (subAST, rest)
-              -> Either (Int,           ParserError) (Expr, [Token])
+              -> Either (Int,           ParserError) (ExprPos, [Token])
  
 parser :: [Token] -> Either (Int, ParserError) Program
 parser = parser' 0 []
@@ -68,7 +71,7 @@ parser' pos commands tokens = case parseCommand pos tokens of
 
 -- command ::= assignment | functionCall | patternMatching
 parseCommand :: Subparser
-parseCommand _ [] = Right (Empty, [])
+parseCommand pos [] = Right ((Empty, pos), [])
 parseCommand pos tokens = case (parseErrors, parseGood) of
   -- only errors -> furthest error
   (_ , []) -> if fst furthestError == pos
@@ -96,7 +99,8 @@ parseCommand pos tokens = case (parseErrors, parseGood) of
 parseAssignment :: Subparser
 parseAssignment pos (Id string:AssignmentOperator:rest) =
   case parseExpr (pos + 2) rest of
-    Right (expr, rest') -> Right (Assignment (ExprId string) expr, rest')
+    Right (rhs, rest') ->
+      Right ((Assignment (ExprId string, pos) rhs, pos), rest')
     Left err -> Left err
 parseAssignment pos _ = Left (pos, ParserError "parseAssignment error")
 
@@ -106,16 +110,16 @@ parseFunctionCall pos [] = Left (pos, ParserError "parseExpr empty")
 parseFunctionCall pos (Id strId:ParenthesisLeft:rest) =
   case parseFunctionArgs pos rest of
     Right (args, rest') ->
-      Right (FunctionCall (ExprId strId) args, rest')
+      Right ((FunctionCall (ExprId strId, pos) args, pos), rest')
     Left err -> Left err
 parseFunctionCall pos tokens = Left (pos, ParserError "parseFunctionCall error")
 
 parseFunctionArgs :: Int -> [Token]
-                  -> Either (Int, ParserError) ([Expr], [Token])
+                  -> Either (Int, ParserError) ([ExprPos], [Token])
 parseFunctionArgs = parseFunctionArgs' []
 
-parseFunctionArgs' :: [Expr] -> Int -> [Token]
-                   -> Either (Int, ParserError) ([Expr], [Token])
+parseFunctionArgs' :: [ExprPos] -> Int -> [Token]
+                   -> Either (Int, ParserError) ([ExprPos], [Token])
 parseFunctionArgs' args pos (ParenthesisRight:rest) = Right (args, rest)
 parseFunctionArgs' args pos tokens = case parseExpr pos tokens of
   Right (arg, rest) ->
@@ -130,12 +134,12 @@ parsePatternMatching pos (MatchKeyword:rest) = case parseExpr (pos + 1) rest of
   Left err -> Left err
   Right (switch, BraceLeft:rest') -> case parseMatchBody (pos + 1 + length rest - length rest') rest' of
     Right (cases, defaultCase, rest'') ->
-      Right (PatternMatching switch cases defaultCase, rest'')
+      Right ((PatternMatching switch cases defaultCase, pos), rest'')
     Left err -> Left err
 parsePatternMatching pos _ = Left (pos, ParserError "parsePatternMatching error")
 
 parseMatchBody :: Int -> [Token]
-               -> Either (Int, ParserError) ([(Expr, Expr)], Expr, [Token])
+               -> Either (Int, ParserError) ([(ExprPos, ExprPos)], ExprPos, [Token])
 parseMatchBody = parseMatchBody' []
 
 parseMatchBody' cases pos (WildCard:MatchArrow:tokens) = case parseExpr (pos + 2) tokens of
@@ -177,7 +181,7 @@ parseExpr pos tokens = case (parseErrors, parseGood) of
   -- only errors from complex expressions ->
   -- if error is on first token we might still have singleTokenExpr
   (_ , []) -> case singleTokenExpr of
-    Just expr | fst furthestError == pos -> Right (expr, tail tokens)
+    Just expr | fst furthestError == pos -> Right ((expr, pos), tail tokens)
     _ -> Left furthestError
   -- no errors -> furthest good
   ([], _ ) -> Right furthestGood
@@ -210,7 +214,7 @@ parseExpr pos tokens = case (parseErrors, parseGood) of
 -- namedTupleAcess ::= id ':' id
 parseNamedTupleAcess :: Subparser
 parseNamedTupleAcess pos (Id lhs:NamedTuppleAccessOperator:Id rhs:rest) =
-  Right (NamedTuppleAccess (ExprId lhs) (ExprId rhs), rest)
+  Right ((NamedTuppleAccess (ExprId lhs, pos) (ExprId rhs, pos + 2), pos), rest)
 parseNamedTupleAcess pos _ =
   Left (pos, ParserError "parseNamedTupleAcess error")
 
@@ -222,25 +226,25 @@ parseLambdaDef pos tokens = do
   (args, rest1) <- parseLambdaArgs (pos + 1) rest -- {id} ')'
   rest2 <- skipToken BraceLeft (pos + length tokens - length rest1) rest1 -- '{'
   (body, rest3) <- parseLambdaBody (pos + length tokens - length rest2) rest2
-  return (LambdaDef args body, rest3)
+  return ((LambdaDef args body, pos), rest3)
 
 parseLambdaArgs :: Int -> [Token]
-                -> Either (Int, ParserError) ([Expr], [Token])
+                -> Either (Int, ParserError) ([ExprPos], [Token])
 parseLambdaArgs = parseLambdaArgs' []
 
-parseLambdaArgs' :: [Expr] -> Int -> [Token]
-                -> Either (Int, ParserError) ([Expr], [Token])
+parseLambdaArgs' :: [ExprPos] -> Int -> [Token]
+                -> Either (Int, ParserError) ([ExprPos], [Token])
 parseLambdaArgs' args _ (ParenthesisRight:rest) = Right (args, rest)
 parseLambdaArgs' args pos (Id arg:rest) =
-  parseLambdaArgs' (args ++ [ExprId arg]) (pos + 1) rest
+  parseLambdaArgs' (args ++ [(ExprId arg, pos)]) (pos + 1) rest
 parseLambdaArgs' _ pos _ = Left (pos, ParserError "parseLambdaArgs' error")
 
 parseLambdaBody :: Int -> [Token]
-                -> Either (Int, ParserError) ([Expr], [Token])
+                -> Either (Int, ParserError) ([ExprPos], [Token])
 parseLambdaBody = parseLambdaBody' []
 
-parseLambdaBody' :: [Expr] -> Int -> [Token]
-                 -> Either (Int, ParserError) ([Expr], [Token])
+parseLambdaBody' :: [ExprPos] -> Int -> [Token]
+                 -> Either (Int, ParserError) ([ExprPos], [Token])
 parseLambdaBody' commands _ (BraceRight:rest) = Right (commands, rest)
 parseLambdaBody' commands pos tokens = case parseCommand pos tokens of
   Right (command, Semicolon:rest) ->
@@ -253,16 +257,16 @@ parseLambdaBody' commands pos tokens = case parseCommand pos tokens of
 -- namedTupleField ::= id '=' expr
 parseNamedTuple :: Subparser
 parseNamedTuple pos (BracketLeft:rest) = case parseNamedTupleFields pos rest of
-  Right (fields, rest') -> Right (NamedTuple fields, rest')
+  Right (fields, rest') -> Right ((NamedTuple fields, pos), rest')
   Left err -> Left err
 parseNamedTuple pos tokens = Left (pos, ParserError "parseNamedTuple error")
 
 parseNamedTupleFields :: Int -> [Token]
-                 -> Either (Int, ParserError) ([(Expr, Expr)], [Token])
+                 -> Either (Int, ParserError) ([(ExprPos, ExprPos)], [Token])
 parseNamedTupleFields = parseNamedTupleFields' []
 
-parseNamedTupleFields' :: [(Expr, Expr)] -> Int -> [Token]
-                  -> Either (Int, ParserError) ([(Expr, Expr)], [Token])
+parseNamedTupleFields' :: [(ExprPos, ExprPos)] -> Int -> [Token]
+                  -> Either (Int, ParserError) ([(ExprPos, ExprPos)], [Token])
 parseNamedTupleFields' fields pos (BracketRight:rest) = Right (fields, rest)
 parseNamedTupleFields' fields pos tokens = case parseNamedTupleField pos tokens of
   Right (lhs, rhs, rest) -> parseNamedTupleFields'
@@ -270,26 +274,26 @@ parseNamedTupleFields' fields pos tokens = case parseNamedTupleField pos tokens 
   Left err -> Left err
 
 parseNamedTupleField :: Int -> [Token]
-                     -> Either (Int, ParserError) (Expr, Expr, [Token])
+                     -> Either (Int, ParserError) (ExprPos, ExprPos, [Token])
 parseNamedTupleField pos (Id lhs:NamedTuppleBindingOperator:rest) =
   case parseExpr (pos + 2) rest of
-    Right (rhs, rest') -> Right (ExprId lhs, rhs, rest')
+    Right (rhs, rest') -> Right ((ExprId lhs, pos), rhs, rest')
     Left err -> Left err
 parseNamedTupleField pos _ = Left (pos, ParserError "parseNamedTupleField error")
 
 -- tuple ::= '[' {expr} ']'
 parseTuple :: Subparser
 parseTuple pos (BracketLeft:rest) = case parseTupleFields pos rest of
-  Right (fields, rest') -> Right (Tuple fields, rest')
+  Right (fields, rest') -> Right ((Tuple fields, pos), rest')
   Left err -> Left err
 parseTuple pos tokens = Left (pos, ParserError $ "parseTuple error, tokens: " ++ show tokens)
 
 parseTupleFields :: Int -> [Token]
-                 -> Either (Int, ParserError) ([Expr], [Token])
+                 -> Either (Int, ParserError) ([ExprPos], [Token])
 parseTupleFields = parseTupleFields' []
 
-parseTupleFields' :: [Expr] -> Int -> [Token]
-                  -> Either (Int, ParserError) ([Expr], [Token])
+parseTupleFields' :: [ExprPos] -> Int -> [Token]
+                  -> Either (Int, ParserError) ([ExprPos], [Token])
 parseTupleFields' fields pos (BracketRight:rest) = Right (fields, rest)
 parseTupleFields' fields pos tokens = case parseExpr pos tokens of
   Right (field, rest) -> parseTupleFields'

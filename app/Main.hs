@@ -35,18 +35,18 @@ main = do -- pretty print version
           putStrLn $ "parser error at " ++ show pos ++ ": " ++ show err
           putStr $ showErr code (position $ tokenList !! pos)
       where tokens = map token tokenList
-            printExpr n e = case e of
-              Assignment (ExprId lhs) rhs -> do
-                putStrLn $ replicate n '\t' ++ "assignment to `" ++ lhs ++ "`:"
+            printExpr n (e, pos) = case e of
+              Assignment (ExprId lhs, pos1) rhs -> do
+                putStrLn $ replicate n '\t' ++ show pos ++ " | assignment to `" ++ lhs ++ "`:"
                 printExpr (n + 1) rhs
               ExprId str -> putStrLn $ replicate n '\t' ++ "id: " ++ str
               ExprNumber str -> putStrLn $ replicate n '\t' ++ "number: " ++ str
-              FunctionCall (ExprId fname) args -> do
-                putStrLn $ replicate n '\t' ++ "function call `" ++ fname ++ "`, args:"
+              FunctionCall (ExprId fname, pos1) args -> do
+                putStrLn $ replicate n '\t' ++ show pos ++ " | function call `" ++ fname ++ "`, args:"
                 mapM_ (printExpr (n + 1)) args
-              NamedTuppleAccess (ExprId lhs) (ExprId rhs) -> do
-                putStrLn $ replicate n '\t' ++
-                  "named tuple acess `" ++ lhs ++ ":" ++ rhs ++ "`"
+              NamedTuppleAccess (ExprId lhs, pos1) (ExprId rhs, pos2) -> do
+                putStrLn $ replicate n '\t' ++ show pos ++
+                  " | named tuple acess `" ++ lhs ++ ":" ++ rhs ++ "`"
               Tuple fields -> do
                 putStrLn $ replicate n '\t' ++ "tuple:"
                 mapM_ (printExpr (n + 1)) fields
@@ -55,7 +55,7 @@ main = do -- pretty print version
                 mapM_ (printNamedTupleField (n + 1)) fields
               LambdaDef args body -> do
                 putStrLn $ replicate n '\t' ++ "lambda:"
-                putStrLn $ replicate (n + 1) '\t' ++ "args: " ++ show (map str args)
+                putStrLn $ replicate (n + 1) '\t' ++ "args: " ++ show (map (str . fst) args)
                 putStrLn $ replicate (n + 1) '\t' ++ "body:"
                 mapM_ (printExpr (n + 2)) body
               PatternMatching switch cases defaultCase -> do
@@ -67,8 +67,8 @@ main = do -- pretty print version
                 putStrLn $ replicate (n + 1) '\t' ++ "default:"
                 printExpr (n + 2) defaultCase
               _ -> putStrLn $ replicate n '\t' ++ show e
-            printNamedTupleField n (ExprId lhs, rhs) = do
-              putStrLn $ replicate n '\t' ++ "field `" ++ lhs ++ "`:"
+            printNamedTupleField n ((ExprId lhs, pos1), rhs) = do
+              putStrLn $ replicate n '\t' ++ show pos1 ++ " | field `" ++ lhs ++ "`:"
               printExpr (n + 1) rhs
             printCase n (lhs, rhs) = do
               putStrLn $ replicate n '\t' ++ "case:"
