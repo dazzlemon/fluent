@@ -34,7 +34,10 @@ main = do -- pretty print version
           putStrLn ""
           mapM_ (printExpr 0) commands
           putStrLn ""
-          evaluator commands
+          mbStackTrace <- evaluator commands
+          case mbStackTrace of
+            Nothing -> return ()
+            Just trace -> printStackTrace code trace
         Left (pos, err) -> do
           putStrLn $ "parser error at " ++ show pos ++ ": " ++ show err
           putStr $ showErr code (position $ tokenList !! pos)
@@ -80,6 +83,16 @@ main = do -- pretty print version
               printExpr (n + 2) lhs
               putStrLn $ replicate (n + 1) '\t' ++ "rhs:"
               printExpr (n + 2) rhs
+            printStackTrace code error = case error of
+              InitialError p w -> do
+                putStrLn $ "error: " ++ w
+                putStrLn $ showErr code (position (tokenList !! p))
+              StackTrace p w e -> do
+                putStrLn $ "error in: " ++ w
+                putStrLn $ showErr code (position (tokenList !! p))
+                putStrLn "trace:"
+                putStrLn ""
+                printStackTrace code e
 
 showErr code offset = showTable [ [lineIndexStr, " | ", line]
                                 , ["",           "",    arrow]

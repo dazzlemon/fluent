@@ -108,7 +108,7 @@ parseAssignment pos _ = Left (pos, ParserError "parseAssignment error")
 parseFunctionCall :: Subparser
 parseFunctionCall pos [] = Left (pos, ParserError "parseExpr empty")
 parseFunctionCall pos (Id strId:ParenthesisLeft:rest) =
-  case parseFunctionArgs pos rest of
+  case parseFunctionArgs (pos + 2) rest of
     Right (args, rest') ->
       Right ((FunctionCall (ExprId strId, pos) args, pos), rest')
     Left err -> Left err

@@ -16,12 +16,12 @@ data EvaluatorError = InitialError { pos::Int, what::String }
                                    , trace::EvaluatorError }
                     deriving (Show)
 
-evaluator :: Program -> IO ()
+evaluator :: Program -> IO (Maybe EvaluatorError)
 evaluator p = do
   res <- evaluator' [[]] p
   case res of
-    Right _ -> return ()
-    Left e -> putStr "error: " >> print e >> exitFailure -- print stack trace
+    Right _ -> return Nothing
+    Left e -> return $ Just e
 
 type VarScopes = [[(String, Variable)]]
 
