@@ -9,6 +9,7 @@ import Control.Monad.State
 import Data.List (findIndex, elemIndex)
 import Data.Maybe (catMaybes, mapMaybe)
 import Control.Monad.Trans.Maybe
+import Data.Either (rights)
 
 evaluator :: Program -> IO ()
 evaluator p = do
@@ -34,10 +35,10 @@ data Variable = VarNumber { varStr::String }
 evaluator' :: VarScopes -> Program -> EvalState
 evaluator' variableScopes [] = return variableScopes
 evaluator' variableScopes ((first, pos):rest) = case first of
-  Assignment (ExprId lhs, pos1) (rhs, pos2) -> do
+  Assignment (ExprId lhs, pos1) rhs -> do
     evaluated <- evalExpr variableScopes rhs
     case evaluated of
-      Just rhsVar ->
+      Right rhsVar ->
         let newKV = (lhs, rhsVar)
             currentScope = head variableScopes
             currentScope' =
@@ -49,6 +50,7 @@ evaluator' variableScopes ((first, pos):rest) = case first of
                 _ -> newKV:currentScope
             variableScopes' = currentScope':tail variableScopes
         in evaluator' variableScopes' rest
+      -- TODO: left
   FunctionCall {} -> evalExpr'
   PatternMatching {} -> evalExpr'
   NullExpr -> evaluator' variableScopes rest -- just skip it
@@ -56,7 +58,7 @@ evaluator' variableScopes ((first, pos):rest) = case first of
     die $ "error: invalid comand: " ++ show other
     return variableScopes
   where evalExpr' = do
-          _ <- evalExpr variableScopes first
+          _ <- evalExpr variableScopes (first, pos)
           varScopes <- evaluator' variableScopes rest
           return variableScopes
 
@@ -65,22 +67,22 @@ expectedArgs fname expected got = die $ "error: `" ++ fname
   ++ "` expected " ++ show expected ++ " argument(s), but got "
   ++ show got
 
-findMatch :: [[(String, Variable)]] -> Expr -> [Expr] -> IO (Maybe Int)
+findMatch :: [[(String, Variable)]] -> ExprPos -> [ExprPos] -> IO (Maybe Int)
 findMatch = findMatch' 0
 
-findMatch' :: Int -> [[(String, Variable)]] -> Expr -> [Expr] -> IO (Maybe Int)
+findMatch' :: Int -> [[(String, Variable)]] -> ExprPos -> [ExprPos] -> IO (Maybe Int)
 findMatch' _ _ _ [] = return Nothing
 findMatch' i variableScopes lhs (rhs:rest) = do
   mbLhsVar <- evalExpr variableScopes lhs
   mbRhsVar <- evalExpr variableScopes rhs
   case (mbLhsVar, mbRhsVar) of
-    (Nothing, _) -> do
+    (Left e, _) -> do
       die "error: lhs didn't evaluate"
       return Nothing
-    (_, Nothing) -> do 
+    (_, Left e) -> do 
       die "error: rhs didn't evaluate"
       return Nothing
-    (Just lhs', Just rhs') -> if match lhs' rhs'
+    (Right lhs', Right rhs') -> if match lhs' rhs'
       then return $ Just i
       else findMatch' (i + 1) variableScopes lhs rest
 
@@ -126,63 +128,57 @@ binaryNumFun :: (Double -> Double -> Double) -> InnerFunction
 binaryNumFun f varScopes [a1, a2] = mergeTwoExprs f varScopes a1 a2
 
 printExpr :: InnerFunction
-printExpr varScopes [(arg, pos)] = do
+printExpr varScopes [arg] = do
   var <- evalExpr varScopes arg
   case var of
-    Just (VarString str) -> putStrLn str >> return (Right VarNull)
-    Just (VarNumber str) -> putStrLn str >> return (Right VarNull)
-    _ -> return $ Left $ InitialError pos "can only print numbers and strings"
+    Right (VarString str) -> putStrLn str >> return (Right VarNull)
+    Right (VarNumber str) -> putStrLn str >> return (Right VarNull)
+    _ -> return $ Left $ InitialError (snd arg) "can only print numbers and strings"
 
-evalExpr :: VarScopes -> Expr -> IO (Maybe Variable)
-evalExpr _ (ExprNumber str) = return $ Just $ VarNumber str
-evalExpr _ (ExprString str) = return $ Just $ VarString str
-evalExpr variableScopes (ExprId str) = return $ findVarById str variableScopes
-evalExpr _ (LambdaDef argNames commandList) =
-  return $ Just $ VarFunction argNames' commandList
+evalExpr :: VarScopes -> ExprPos -> IO (Either EvaluatorError Variable)
+evalExpr _ (ExprNumber str, _) = return $ Right $ VarNumber str
+evalExpr _ (ExprString str, _) = return $ Right $ VarString str
+evalExpr variableScopes (ExprId str, pos) =
+  return $ case findVarById str variableScopes of
+    Just var -> Right var
+    Nothing -> Left $ InitialError pos $ "`" ++ str ++ "` is not initialized" 
+evalExpr _ (LambdaDef argNames commandList, pos) =
+  return $ Right $ VarFunction argNames' commandList
   where argNames' = map (str . fst) argNames
-evalExpr variableScopes (FunctionCall (ExprId fname, pos) args) = 
+evalExpr variableScopes (FunctionCall (ExprId fname, _) args, pos) = 
   case findVarById fname variableScopes of
     Just (VarFunction argNames body) -> if length argNames /= length args
-      then do
-        expectedArgs fname (length argNames) (length args)
-        return Nothing
+      then return $ Left $ InitialError pos $ fname ++ "` expected "
+                             ++ show (length argNames) ++ " argument(s), but got "
+                             ++ show (length args)
       else do
-        let args' = map fst args
-        let argsEval = map (evalExpr variableScopes) args'
+        let argsEval = map (evalExpr variableScopes) args
         let argsEval' = sequence argsEval
         argVars <- argsEval'
-        let argVars' = catMaybes argVars
+        let argVars' = rights argVars
         let variableScopes' = zip argNames argVars':variableScopes
         varScopes' <- evaluator' variableScopes' (init body)
-        evalExpr varScopes' (fst (last body))
-    Just _ -> do
-      die $ "error: `" ++ fname ++ "` is not a function"
-      return Nothing
+        evalExpr varScopes' (last body)
+    Just _ -> 
+      return $ Left $ InitialError pos $ "`" ++ fname ++ "` is not a function"
     Nothing -> case lookup fname innerFunctions of
       Just (argSize, f) -> if argSize /= length args 
-        then do
-          expectedArgs fname 2 argSize
-          return Nothing
-        else do
-          res <- f variableScopes args
-          case res of
-            Left e -> die $ what e -- TODO:
-            Right r -> return $ Just r
-      _ -> do
-        die $ "error: `" ++ fname ++ "` is not initialized, varScopes: " ++ show variableScopes
-        return Nothing
+        then return $ Left $ InitialError pos $ fname ++ "` expected "
+                             ++ show 2 ++ " argument(s), but got "
+                             ++ show argSize
+        else f variableScopes args
+      _ -> return $ Left $ InitialError pos $ "`" ++ fname ++ "` is not initialized"
 
-evalExpr variableScopes (PatternMatching (switch, _) cases defaultCase) = do
-  maybeIndex <- findMatch variableScopes switch (map fst lefts)
-  let expr = fst $ case maybeIndex of
+evalExpr variableScopes (PatternMatching switch cases defaultCase, pos) = do
+  maybeIndex <- findMatch variableScopes switch lefts
+  let expr = case maybeIndex of
         Just i -> rights !! i
         Nothing -> defaultCase
   evalExpr variableScopes expr
   where (lefts, rights) = unzip cases
-evalExpr _ NullExpr = return $ Just VarNull 
-evalExpr _ e = do
-  die $ "error: this expression can't be evaluated: " ++ show e
-  return Nothing
+evalExpr _ (NullExpr, _) = return $ Right VarNull 
+evalExpr _ (e, pos) =
+  return $ Left $ InitialError pos "expression can't be evaluted"
 
 type BinaryFun a = (a -> a -> a)
 
@@ -210,8 +206,8 @@ data EvaluatorError = InitialError { pos::Int, what::String }
 
 evalNum :: ExprPos -> VarScopes -> IO (Either EvaluatorError String)
 evalNum (expr, pos) varScopes = do
-  res <- evalExpr varScopes expr
+  res <- evalExpr varScopes (expr, pos)
   case res of
-    Just (VarNumber numStr) -> return $ Right numStr
-    Nothing -> return $ Left $ InitialError pos "can't evaluate expr"
+    Right (VarNumber numStr) -> return $ Right numStr
+    Left e -> return $ Left $ InitialError pos "can't evaluate expr"
     _ -> return $ Left $ InitialError pos "expected number argument"
