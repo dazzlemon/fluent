@@ -119,21 +119,10 @@ binaryNumFun f varScopes args = case mergeTwoExprs f varScopes a1 a2 of
         argCount = length args
 
 printExpr :: InnerFunction
-printExpr varScopes args = if length args /= 1
-  then (Nothing, expectedArgs "print" 1 $ length args)
-  else case fst $ head args of
-    ExprString str -> (Nothing, putStrLn str)
-    ExprNumber str -> (Nothing, putStrLn str)
-    ExprId str -> case findVarById str varScopes of
-      Just var -> (Nothing, printVar var)
-    fc@(FunctionCall _ _) -> case evalExpr varScopes fc of
-      (Just arg, io) -> (Nothing, io >> printVar arg)
-      (Nothing, io) -> (Nothing, io)
-      -- (Nothing, io) -> (Nothing, io >> die "error: argument expression wasn't evaluated")
-    _ -> (Nothing, die "not implemented yet") -- TODO:
-  where printVar var = case var of
-          VarString str -> putStrLn str
-          VarNumber str -> putStrLn str
+printExpr varScopes [(arg, pos)] = case evalExpr varScopes arg of
+  (Just (VarString str), io) -> (Nothing, io >> putStrLn str)
+  (Just (VarNumber str), io) -> (Nothing, io >> putStrLn str)
+  _ -> (Nothing, die "not implemented yet") -- TODO:
 
 evalExpr :: VarScopes -> Expr -> (Maybe Variable, IO ())
 evalExpr _ (ExprNumber str) = (Just $ VarNumber str, return ())
