@@ -17,7 +17,6 @@ evaluator p = do
   return ()
 
 type VarScopes = [[(String, Variable)]]
-type EvalState = IO VarScopes
 
 data Variable = VarNumber { varStr::String }
               | VarString { varStr::String }
@@ -32,8 +31,8 @@ data Variable = VarNumber { varStr::String }
               --                    }
               deriving (Show)
 
-evaluator' :: VarScopes -> Program -> EvalState
-evaluator' variableScopes [] = return variableScopes
+evaluator' :: VarScopes -> Program -> IO (Either EvaluatorError VarScopes)
+evaluator' variableScopes [] = return $ Right variableScopes
 evaluator' variableScopes ((first, pos):rest) = case first of
   Assignment (ExprId lhs, pos1) rhs -> do
     evaluated <- evalExpr variableScopes rhs
@@ -54,13 +53,11 @@ evaluator' variableScopes ((first, pos):rest) = case first of
   FunctionCall {} -> evalExpr'
   PatternMatching {} -> evalExpr'
   NullExpr -> evaluator' variableScopes rest -- just skip it
-  other -> do
-    die $ "error: invalid comand: " ++ show other
-    return variableScopes
+  other -> return $ Left $ InitialError pos $ "invalid comand: " ++ show other
   where evalExpr' = do
           _ <- evalExpr variableScopes (first, pos)
           varScopes <- evaluator' variableScopes rest
-          return variableScopes
+          return $ Right variableScopes
 
 expectedArgs :: String -> Int -> Int -> IO ()
 expectedArgs fname expected got = die $ "error: `" ++ fname
@@ -157,8 +154,10 @@ evalExpr variableScopes (FunctionCall (ExprId fname, _) args, pos) =
         argVars <- argsEval'
         let argVars' = rights argVars
         let variableScopes' = zip argNames argVars':variableScopes
-        varScopes' <- evaluator' variableScopes' (init body)
-        evalExpr varScopes' (last body)
+        ev <- evaluator' variableScopes' (init body)
+        case ev of
+          Left e -> return $ Left e
+          Right varScopes' -> evalExpr varScopes' (last body)
     Just _ -> 
       return $ Left $ InitialError pos $ "`" ++ fname ++ "` is not a function"
     Nothing -> case lookup fname innerFunctions of
