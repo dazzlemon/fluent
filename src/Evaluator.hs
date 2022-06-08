@@ -64,7 +64,9 @@ evaluator' variableScopes ((first, pos):rest) = case first of
   where evalExpr' = do
           _ <- evalExpr variableScopes (first, pos)
           varScopes <- evaluator' variableScopes rest
-          return $ Right variableScopes
+          case varScopes of
+            Right r -> return $ Right r
+            Left e  -> return $ Left $ StackTrace pos "evaluator' evalExpr'" e
 
 findMatch :: [[(String, Variable)]] -> ExprPos -> [ExprPos]
           -> IO (Either EvaluatorError (Maybe Int))
@@ -126,11 +128,13 @@ binaryNumFun f varScopes [a1, a2] = mergeTwoExprs f varScopes a1 a2
 
 printExpr :: InnerFunction
 printExpr varScopes [arg] = do
-  var <- evalExpr varScopes arg
-  case var of
-    Right (VarString str) -> putStrLn str >> return (Right VarNull)
-    Right (VarNumber str) -> putStrLn str >> return (Right VarNull)
-    _ -> return $ Left $ InitialError (snd arg) "can only print numbers and strings"
+  r <- evalExpr varScopes arg
+  case r of
+    Right var -> case var of
+      VarString str -> putStrLn str >> return (Right VarNull)
+      VarNumber str -> putStrLn str >> return (Right VarNull)
+      _ -> return $ Left $ InitialError (snd arg) "can only print numbers and strings"
+    Left e -> return $ Left $ StackTrace (snd arg) "print" e
 
 evalExpr :: VarScopes -> ExprPos -> IO (Either EvaluatorError Variable)
 evalExpr _ (ExprNumber str, _) = return $ Right $ VarNumber str
@@ -204,5 +208,5 @@ evalNum (expr, pos) varScopes = do
   res <- evalExpr varScopes (expr, pos)
   case res of
     Right (VarNumber numStr) -> return $ Right numStr
-    Left e -> return $ Left $ InitialError pos "can't evaluate expr"
+    Left e -> return $ Left e
     _ -> return $ Left $ InitialError pos "expected number argument"
