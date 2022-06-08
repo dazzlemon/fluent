@@ -56,17 +56,16 @@ evaluator' variableScopes ((first, pos):rest) = case first of
                 _ -> newKV:currentScope
             variableScopes' = currentScope':tail variableScopes
         in evaluator' variableScopes' rest
-      -- TODO: left
+      Left e -> return $ Left e 
   FunctionCall {} -> evalExpr'
   PatternMatching {} -> evalExpr'
   NullExpr -> evaluator' variableScopes rest -- just skip it
   other -> return $ Left $ InitialError pos $ "invalid comand: " ++ show other
   where evalExpr' = do
-          _ <- evalExpr variableScopes (first, pos)
-          varScopes <- evaluator' variableScopes rest
-          case varScopes of
-            Right r -> return $ Right r
-            Left e  -> return $ Left $ StackTrace pos "evaluator' evalExpr'" e
+          res <- evalExpr variableScopes (first, pos)
+          case res of
+            Right _ -> evaluator' variableScopes rest
+            Left e -> return $ Left e
 
 findMatch :: [[(String, Variable)]] -> ExprPos -> [ExprPos]
           -> IO (Either EvaluatorError (Maybe Int))
@@ -150,8 +149,8 @@ evalExpr variableScopes (FunctionCall (ExprId fname, _) args, pos) =
   case findVarById fname variableScopes of
     Just (VarFunction argNames body) -> if length argNames /= length args
       then return $ Left $ InitialError pos $ fname ++ "` expected "
-                             ++ show (length argNames) ++ " argument(s), but got "
-                             ++ show (length args)
+        ++ show (length argNames) ++ " argument(s), but got "
+        ++ show (length args)
       else do
         let argsEval = map (evalExpr variableScopes) args
         let argsEval' = sequence argsEval
@@ -160,7 +159,7 @@ evalExpr variableScopes (FunctionCall (ExprId fname, _) args, pos) =
         let variableScopes' = zip argNames argVars':variableScopes
         ev <- evaluator' variableScopes' (init body)
         case ev of
-          Left e -> return $ Left e
+          Left e -> return $ Left $ StackTrace pos fname e
           Right varScopes' -> evalExpr varScopes' (last body)
     Just _ -> 
       return $ Left $ InitialError pos $ "`" ++ fname ++ "` is not a function"
