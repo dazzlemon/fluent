@@ -6,10 +6,14 @@ import System.Exit (exitFailure)
 import ListPadding (rpad, lpad)
 import Parser
 import Evaluator
+import System.Environment
 
 -- main = interact (show . lexer) -- normal version
 main = do -- pretty print version
-  code <- getContents
+  args <- getArgs
+  let filename = head args
+  code <- readFile filename
+  -- code <- getContents
   case lexer code of
     Left err -> do
       putStrLn $ "Error: " ++ constrString
