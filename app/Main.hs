@@ -1,7 +1,7 @@
 import Data.List (transpose, elemIndices)
 import Data.Data (Data(toConstr))
 import Lexer
-import Control.Monad ( when )
+import Control.Monad (when, forM_)
 import System.Exit (exitFailure)
 import ListPadding (rpad, lpad)
 import Parser
@@ -35,9 +35,7 @@ main = do -- pretty print version
           mapM_ (printExpr 0) commands
           putStrLn ""
           mbStackTrace <- evaluator commands
-          case mbStackTrace of
-            Nothing -> return ()
-            Just trace -> printStackTrace code trace
+          forM_ mbStackTrace (printStackTrace code)
         Left (pos, err) -> do
           putStrLn $ "parser error at " ++ show pos ++ ": " ++ show err
           putStr $ showErr code (position $ tokenList !! pos)

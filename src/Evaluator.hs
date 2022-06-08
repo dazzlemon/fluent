@@ -114,16 +114,16 @@ type InnerFunction = VarScopes -> [ExprPos]
 -- before passing them to inner function
 innerFunctions :: [(String, (Int, InnerFunction))]
 innerFunctions = [ ("print", (1, printExpr))
-                 , ("add", (2, binaryNumFun (+)))
-                 , ("sub", (2, binaryNumFun (-)))
+                 , ("add", (2, binaryNumFun "add" (+)))
+                 , ("sub", (2, binaryNumFun "sub" (-)))
                  , ("read", (0, readExpr))
                  ]
 
 readExpr :: InnerFunction
 readExpr _ [] = Right . VarString <$> getLine
 
-binaryNumFun :: (Double -> Double -> Double) -> InnerFunction
-binaryNumFun f varScopes [a1, a2] = mergeTwoExprs f varScopes a1 a2
+binaryNumFun :: String -> (Double -> Double -> Double) -> InnerFunction
+binaryNumFun fname f varScopes [a1, a2] = mergeTwoExprs fname f varScopes a1 a2
 
 printExpr :: InnerFunction
 printExpr varScopes [arg] = do
@@ -184,15 +184,15 @@ evalExpr _ (e, pos) =
 
 type BinaryFun a = (a -> a -> a)
 
-mergeTwoExprs :: BinaryFun Double
+mergeTwoExprs :: String -> BinaryFun Double
               -> VarScopes
               -> ExprPos -> ExprPos
               -> IO (Either EvaluatorError Variable)
-mergeTwoExprs f varScopes lhs rhs = do
-  l <- evalNum lhs varScopes
+mergeTwoExprs fname f varScopes lhs rhs = do
+  l <- evalNum fname lhs varScopes
   case l of
     Right lhsStr -> do
-      r <- evalNum rhs varScopes
+      r <- evalNum fname rhs varScopes
       case r of
         Right rhsStr -> let resStr = if '.' `elem` lhsStr
                               then show res
@@ -202,10 +202,10 @@ mergeTwoExprs f varScopes lhs rhs = do
         Left e -> return $ Left e
     Left e -> return $ Left e
 
-evalNum :: ExprPos -> VarScopes -> IO (Either EvaluatorError String)
-evalNum (expr, pos) varScopes = do
+evalNum :: String -> ExprPos -> VarScopes -> IO (Either EvaluatorError String)
+evalNum fname (expr, pos) varScopes = do
   res <- evalExpr varScopes (expr, pos)
   case res of
     Right (VarNumber numStr) -> return $ Right numStr
     Left e -> return $ Left e
-    _ -> return $ Left $ InitialError pos "expected number argument"
+    _ -> return $ Left $ InitialError pos $ fname ++ ": expected number argument"
