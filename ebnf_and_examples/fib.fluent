@@ -34,4 +34,9 @@ aboba <- (x) {
 	add(x 2);
 };
 
-print(add(aboba(3) 'test'));
+# print(add(aboba(3) 'test'));
+
+print('What`s your name?');
+name <- read();
+print('Hello');
+print(name);
