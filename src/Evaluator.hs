@@ -189,16 +189,17 @@ mergeTwoExprs :: String -> BinaryFun Double
               -> ExprPos -> ExprPos
               -> ExceptT EvaluatorError IO Variable
 mergeTwoExprs fname f varScopes lhs rhs = do
-  lhsStr <- evalNum fname lhs varScopes
-  rhsStr <- evalNum fname rhs varScopes
-  let resStr = if '.' `elem` lhsStr
+  lhsStr <- evalNum' lhs
+  rhsStr <- evalNum' rhs
+  let resStr = if '.' `elem` lhsStr -- if not integer
         then show res
         else show (floor res::Int) 
       res = f (read lhsStr) (read rhsStr)
   return $ VarNumber resStr
+  where evalNum' n = evalNum fname n varScopes
 
 evalNum :: String -> ExprPos -> VarScopes
-              -> ExceptT EvaluatorError IO String
+        -> ExceptT EvaluatorError IO String
 evalNum fname (expr, pos) varScopes = do
   res <- liftIO $ evalExpr varScopes (expr, pos)
   case res of
