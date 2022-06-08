@@ -2,7 +2,7 @@
 
 module Evaluator where
 
-import System.Exit (die)
+import System.Exit (exitFailure)
 import Parser
 import Control.Monad (mplus)
 import Control.Monad.State
@@ -11,10 +11,17 @@ import Data.Maybe (catMaybes, mapMaybe)
 import Control.Monad.Trans.Maybe
 import Data.Either (rights)
 
+data EvaluatorError = InitialError { pos::Int, what::String }
+                    | StackTrace   { pos::Int, what::String
+                                   , trace::EvaluatorError }
+                    deriving (Show)
+
 evaluator :: Program -> IO ()
 evaluator p = do
-  _ <- evaluator' [[]] p
-  return ()
+  res <- evaluator' [[]] p
+  case res of
+    Right _ -> return ()
+    Left e -> putStr "error: " >> print e >> exitFailure -- print stack trace
 
 type VarScopes = [[(String, Variable)]]
 
@@ -59,28 +66,21 @@ evaluator' variableScopes ((first, pos):rest) = case first of
           varScopes <- evaluator' variableScopes rest
           return $ Right variableScopes
 
-expectedArgs :: String -> Int -> Int -> IO ()
-expectedArgs fname expected got = die $ "error: `" ++ fname
-  ++ "` expected " ++ show expected ++ " argument(s), but got "
-  ++ show got
-
-findMatch :: [[(String, Variable)]] -> ExprPos -> [ExprPos] -> IO (Maybe Int)
+findMatch :: [[(String, Variable)]] -> ExprPos -> [ExprPos]
+          -> IO (Either EvaluatorError (Maybe Int))
 findMatch = findMatch' 0
 
-findMatch' :: Int -> [[(String, Variable)]] -> ExprPos -> [ExprPos] -> IO (Maybe Int)
-findMatch' _ _ _ [] = return Nothing
+findMatch' :: Int -> [[(String, Variable)]] -> ExprPos -> [ExprPos]
+           -> IO (Either EvaluatorError (Maybe Int))
+findMatch' _ _ _ [] = return $ Right Nothing
 findMatch' i variableScopes lhs (rhs:rest) = do
   mbLhsVar <- evalExpr variableScopes lhs
   mbRhsVar <- evalExpr variableScopes rhs
   case (mbLhsVar, mbRhsVar) of
-    (Left e, _) -> do
-      die "error: lhs didn't evaluate"
-      return Nothing
-    (_, Left e) -> do 
-      die "error: rhs didn't evaluate"
-      return Nothing
+    (Left e, _) -> return $ Left e
+    (_, Left e) -> return $ Left e
     (Right lhs', Right rhs') -> if match lhs' rhs'
-      then return $ Just i
+      then return $ Right $ Just i
       else findMatch' (i + 1) variableScopes lhs rest
 
 match :: Variable -> Variable -> Bool
@@ -171,8 +171,8 @@ evalExpr variableScopes (FunctionCall (ExprId fname, _) args, pos) =
 evalExpr variableScopes (PatternMatching switch cases defaultCase, pos) = do
   maybeIndex <- findMatch variableScopes switch lefts
   let expr = case maybeIndex of
-        Just i -> rights !! i
-        Nothing -> defaultCase
+        Right (Just i) -> rights !! i
+        Right Nothing -> defaultCase
   evalExpr variableScopes expr
   where (lefts, rights) = unzip cases
 evalExpr _ (NullExpr, _) = return $ Right VarNull 
@@ -198,10 +198,6 @@ mergeTwoExprs f varScopes lhs rhs = do
                         in return $ Right $ VarNumber resStr
         Left e -> return $ Left e
     Left e -> return $ Left e
-
-data EvaluatorError = InitialError { pos::Int, what::String }
-                    | StackTrace   { pos::Int, what::String
-                                   , trace::EvaluatorError }
 
 evalNum :: ExprPos -> VarScopes -> IO (Either EvaluatorError String)
 evalNum (expr, pos) varScopes = do
