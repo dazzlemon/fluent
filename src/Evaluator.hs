@@ -8,7 +8,7 @@ import Control.Monad (mplus)
 import Control.Monad.State
 import Data.List (findIndex, elemIndex)
 import Data.Maybe (catMaybes, mapMaybe)
-import Control.Monad.Trans.Maybe
+import Control.Monad.Trans.Except (catchE, ExceptT, except, throwE, runExceptT)
 import Data.Either (rights)
 
 data EvaluatorError = InitialError { pos::Int, what::String }
@@ -123,7 +123,7 @@ readExpr :: InnerFunction
 readExpr _ [] = Right . VarString <$> getLine
 
 binaryNumFun :: String -> (Double -> Double -> Double) -> InnerFunction
-binaryNumFun fname f varScopes [a1, a2] = mergeTwoExprs fname f varScopes a1 a2
+binaryNumFun fname f varScopes [a1, a2] = runExceptT $ mergeTwoExprs fname f varScopes a1 a2
 
 printExpr :: InnerFunction
 printExpr varScopes [arg] = do
@@ -187,25 +187,21 @@ type BinaryFun a = (a -> a -> a)
 mergeTwoExprs :: String -> BinaryFun Double
               -> VarScopes
               -> ExprPos -> ExprPos
-              -> IO (Either EvaluatorError Variable)
+              -> ExceptT EvaluatorError IO Variable
 mergeTwoExprs fname f varScopes lhs rhs = do
-  l <- evalNum fname lhs varScopes
-  case l of
-    Right lhsStr -> do
-      r <- evalNum fname rhs varScopes
-      case r of
-        Right rhsStr -> let resStr = if '.' `elem` lhsStr
-                              then show res
-                              else show (floor res::Int) 
-                            res = f (read lhsStr) (read rhsStr)
-                        in return $ Right $ VarNumber resStr
-        Left e -> return $ Left e
-    Left e -> return $ Left e
+  lhsStr <- evalNum fname lhs varScopes
+  rhsStr <- evalNum fname rhs varScopes
+  let resStr = if '.' `elem` lhsStr
+        then show res
+        else show (floor res::Int) 
+      res = f (read lhsStr) (read rhsStr)
+  return $ VarNumber resStr
 
-evalNum :: String -> ExprPos -> VarScopes -> IO (Either EvaluatorError String)
+evalNum :: String -> ExprPos -> VarScopes
+              -> ExceptT EvaluatorError IO String
 evalNum fname (expr, pos) varScopes = do
-  res <- evalExpr varScopes (expr, pos)
+  res <- liftIO $ evalExpr varScopes (expr, pos)
   case res of
-    Right (VarNumber numStr) -> return $ Right numStr
-    Left e -> return $ Left e
-    _ -> return $ Left $ InitialError pos $ fname ++ ": expected number argument"
+    Right (VarNumber numStr) -> return numStr
+    Left e -> throwE e
+    _ -> throwE $ InitialError pos $ fname ++ ": expected number argument"
