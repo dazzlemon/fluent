@@ -100,7 +100,42 @@ replaceNth n newVal (x:xs)
   | n == 0 = newVal:xs
   | otherwise = x:replaceNth (n - 1) newVal xs
 
-evalExpr :: [[(String, Variable)]] -> Expr -> (Maybe Variable, IO ())
+type InnerFunction = VarScopes -> [ExprPos] -> (Maybe Variable, IO ())
+
+-- you are expected to check size of arguments
+-- before passing them to inner function
+innerFunctions :: [(String, (Int, InnerFunction))]
+innerFunctions = [ ("print", (1, printExpr))
+                 , ("add", (2, binaryNumFun (+)))
+                 , ("sub", (2, binaryNumFun (-)))
+                 ]
+
+binaryNumFun :: (Double -> Double -> Double) -> InnerFunction
+binaryNumFun f varScopes args = case mergeTwoExprs f varScopes a1 a2 of
+    (Right res, io) -> (Just res, io)
+    (Left e, io) -> (Nothing, io >> die (what e))
+  where a1 = head args
+        a2 = args !! 1
+        argCount = length args
+
+printExpr :: InnerFunction
+printExpr varScopes args = if length args /= 1
+  then (Nothing, expectedArgs "print" 1 $ length args)
+  else case fst $ head args of
+    ExprString str -> (Nothing, putStrLn str)
+    ExprNumber str -> (Nothing, putStrLn str)
+    ExprId str -> case findVarById str varScopes of
+      Just var -> (Nothing, printVar var)
+    fc@(FunctionCall _ _) -> case evalExpr varScopes fc of
+      (Just arg, io) -> (Nothing, io >> printVar arg)
+      (Nothing, io) -> (Nothing, io)
+      -- (Nothing, io) -> (Nothing, io >> die "error: argument expression wasn't evaluated")
+    _ -> (Nothing, die "not implemented yet") -- TODO:
+  where printVar var = case var of
+          VarString str -> putStrLn str
+          VarNumber str -> putStrLn str
+
+evalExpr :: VarScopes -> Expr -> (Maybe Variable, IO ())
 evalExpr _ (ExprNumber str) = (Just $ VarNumber str, return ())
 evalExpr _ (ExprString str) = (Just $ VarString str, return ())
 evalExpr variableScopes (ExprId str) = (findVarById str variableScopes, return ())
@@ -114,41 +149,16 @@ evalExpr variableScopes (FunctionCall (ExprId fname, pos) args) =
         (varScopes', io1) -> case evalExpr varScopes' (fst (last body)) of
           (res, io2) -> (res, io1 >> io2)
     Just _ -> (Nothing, die $ "error: `" ++ fname ++ "` is not a function")
-    Nothing -> case fname of
-      "print" -> if length args /= 1
-        then (Nothing, expectedArgs "print" 1 $ length args)
-        else case fst $ head args of
-          ExprString str -> (Nothing, putStrLn str)
-          ExprNumber str -> (Nothing, putStrLn str)
-          ExprId str -> case findVarById str variableScopes of
-            Just var -> (Nothing, printVar var)
-          fc@(FunctionCall _ _) -> case evalExpr variableScopes fc of
-            (Just arg, io) -> (Nothing, io >> printVar arg)
-            (Nothing, io) -> (Nothing, io)
-            -- (Nothing, io) -> (Nothing, io >> die "error: argument expression wasn't evaluated")
-          _ -> (Nothing, die "not implemented yet") -- TODO:
-      _ | fname `elem` ["add", "sub"] -> binaryNumFun
+    Nothing -> case lookup fname innerFunctions of
+      Just (argSize, f) -> if argSize /= length args 
+        then (Nothing, expectedArgs fname 2 argSize)
+        else f variableScopes args
       _ -> (Nothing, die $ "error: `" ++ fname ++ "` is not initialized, varScopes: " ++ show variableScopes)
   where mbVar = evalExpr variableScopes 
         argVars = catMaybes argMaybeVars
         (argMaybeVars, ios) = unzip evalExprs
         evalExprs = map (evalExpr variableScopes . fst) args
         variableScopesWith argNames = zip argNames argVars:variableScopes
-        binaryNumFun = if argCount /= 2
-            then err
-            else case mergeTwoExprs f variableScopes a1 a2 of
-              (Right res, io) -> (Just res, io)
-              (Left e, io) -> (Nothing, io >> (die $ what e))
-          where a1 = head args
-                a2 = args !! 1
-                argCount = length args
-                err = (Nothing, expectedArgs fname 2 argCount)
-                f = case fname of
-                  "add" -> (+)
-                  "sub" -> (-)
-        printVar var = case var of
-          VarString str -> putStrLn str
-          VarNumber str -> putStrLn str
 
 evalExpr variableScopes (PatternMatching (switch, _) cases defaultCase) = case evalExpr variableScopes expr of
   (res, io2) -> (res, io >> io2)
