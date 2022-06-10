@@ -1,18 +1,22 @@
-import Data.List (transpose, elemIndices)
 import Data.Data (Data(toConstr))
 import Lexer
 import Control.Monad (when, forM_)
 import System.Exit (exitFailure)
-import ListPadding (rpad, lpad)
 import Parser
 import Evaluator
 import System.Environment
+import Stuff
+import ListPadding
+import Data.List (elemIndices)
+import Data.Text (pack, unpack, replace)
 
 -- main = interact (show . lexer) -- normal version
 main = do -- pretty print version
   args <- getArgs
   let filename = head args
-  code <- readFile filename
+  code' <- readFile filename
+  -- replace tabs with 4 spaces for better printing of errors later
+  let code = unpack (replace (pack "\t") (pack "    ") (pack code'))
   -- code <- getContents
   case lexer code of
     Left err -> do
@@ -121,8 +125,3 @@ tokenInfoListToTable = map tokenInfoToRow
                   then "\'" ++ tokenString token ++ "\'"
                   else ""
                 positionString = show position
-
-showTable :: [[String]] -> String
-showTable table = unlines $ map showRow table
-  where maxLengths = map (maximum . map length) $ transpose table
-        showRow = unwords . zipWith (`rpad` ' ') maxLengths

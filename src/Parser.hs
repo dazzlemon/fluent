@@ -22,7 +22,7 @@ data Expr = ExprNumber { str::String }
           | ExprId { str::String }
 --        | functionCall
   -- functionCall ::= id '(' {expr} ')'
-          | FunctionCall { id::ExprPos, args::[ExprPos] }
+          | FunctionCall { fname::ExprPos, args::[ExprPos] }
 --        | '_'
           | WildCardExpr
 --        | "NULL"

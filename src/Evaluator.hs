@@ -8,8 +8,14 @@ import Control.Monad (mplus)
 import Control.Monad.State
 import Data.List (findIndex, elemIndex)
 import Data.Maybe (catMaybes, mapMaybe)
-import Control.Monad.Trans.Except (catchE, ExceptT, except, throwE, runExceptT)
-import Data.Either (rights)
+import Control.Monad.Trans.Except ( ExceptT
+                                  , except
+                                  , throwE
+                                  , runExceptT
+                                  , withExceptT
+                                  , catchE
+                                  )
+import Stuff
 
 data EvaluatorError = InitialError { pos::Int, what::String }
                     | StackTrace   { pos::Int, what::String
@@ -18,7 +24,7 @@ data EvaluatorError = InitialError { pos::Int, what::String }
 
 evaluator :: Program -> IO (Maybe EvaluatorError)
 evaluator p = do
-  res <- evaluator' [[]] p
+  res <- runExceptT $ evaluator' [[]] p
   case res of
     Right _ -> return Nothing
     Left e -> return $ Just e
@@ -38,51 +44,43 @@ data Variable = VarNumber { varStr::String }
               --                    }
               deriving (Show)
 
-evaluator' :: VarScopes -> Program -> IO (Either EvaluatorError VarScopes)
-evaluator' variableScopes [] = return $ Right variableScopes
+evaluator' :: VarScopes -> Program -> ExceptT EvaluatorError IO VarScopes
+evaluator' variableScopes [] = return variableScopes
 evaluator' variableScopes ((first, pos):rest) = case first of
-  Assignment (ExprId lhs, pos1) rhs -> do
-    evaluated <- evalExpr variableScopes rhs
-    case evaluated of
-      Right rhsVar ->
-        let newKV = (lhs, rhsVar)
-            currentScope = head variableScopes
-            currentScope' =
-              -- try findind variable in current skope
-              case findIndex ((== lhs) . fst) currentScope of
-                --   change it
-                Just i -> replaceNth i newKV currentScope
-                --   otherwise add it
-                _ -> newKV:currentScope
-            variableScopes' = currentScope':tail variableScopes
-        in evaluator' variableScopes' rest
-      Left e -> return $ Left e 
-  FunctionCall {} -> evalExpr'
-  PatternMatching {} -> evalExpr'
-  NullExpr -> evaluator' variableScopes rest -- just skip it
-  other -> return $ Left $ InitialError pos $ "invalid comand: " ++ show other
+    Assignment (ExprId lhs, pos1) rhs -> do
+      rhsVar <- evalExpr variableScopes rhs
+      let newKV = (lhs, rhsVar)
+          currentScope = head variableScopes
+          currentScope' =
+            -- try findind variable in current skope
+            case findIndex ((== lhs) . fst) currentScope of
+              --   change it
+              Just i -> replaceNth i newKV currentScope
+              --   otherwise add it
+              _ -> newKV:currentScope
+          variableScopes' = currentScope':tail variableScopes
+      evaluator' variableScopes' rest
+    FunctionCall {} -> evalExpr'
+    PatternMatching {} -> evalExpr'
+    NullExpr -> evaluator' variableScopes rest -- just skip it
+    other -> throwInitial pos $ "invalid comand: " ++ show other
   where evalExpr' = do
-          res <- evalExpr variableScopes (first, pos)
-          case res of
-            Right _ -> evaluator' variableScopes rest
-            Left e -> return $ Left e
+          _ <- evalExpr variableScopes (first, pos)
+          evaluator' variableScopes rest
 
 findMatch :: [[(String, Variable)]] -> ExprPos -> [ExprPos]
-          -> IO (Either EvaluatorError (Maybe Int))
+          -> ExceptT EvaluatorError IO (Maybe Int)
 findMatch = findMatch' 0
 
 findMatch' :: Int -> [[(String, Variable)]] -> ExprPos -> [ExprPos]
-           -> IO (Either EvaluatorError (Maybe Int))
-findMatch' _ _ _ [] = return $ Right Nothing
+           -> ExceptT EvaluatorError IO (Maybe Int)
+findMatch' _ _ _ [] = return Nothing
 findMatch' i variableScopes lhs (rhs:rest) = do
-  mbLhsVar <- evalExpr variableScopes lhs
-  mbRhsVar <- evalExpr variableScopes rhs
-  case (mbLhsVar, mbRhsVar) of
-    (Left e, _) -> return $ Left e
-    (_, Left e) -> return $ Left e
-    (Right lhs', Right rhs') -> if match lhs' rhs'
-      then return $ Right $ Just i
-      else findMatch' (i + 1) variableScopes lhs rest
+  lhs' <- evalExpr variableScopes lhs
+  rhs' <- evalExpr variableScopes rhs
+  if match lhs' rhs'
+    then return $ Just i
+    else findMatch' (i + 1) variableScopes lhs rest
 
 match :: Variable -> Variable -> Bool
 match (VarNumber lhs) (VarNumber rhs) = rhs == lhs
@@ -100,15 +98,9 @@ findVarById name variableScopes = do
 
 containsVar :: String -> [(String, Variable)] -> Bool
 containsVar name = any ((== name) . fst)
-        
-replaceNth :: Int -> a -> [a] -> [a]
-replaceNth _ _ [] = []
-replaceNth n newVal (x:xs)
-  | n == 0 = newVal:xs
-  | otherwise = x:replaceNth (n - 1) newVal xs
 
 type InnerFunction = VarScopes -> [ExprPos]
-                  -> IO (Either EvaluatorError Variable)
+                  -> ExceptT EvaluatorError IO Variable
 
 -- you are expected to check size of arguments
 -- before passing them to inner function
@@ -120,67 +112,59 @@ innerFunctions = [ ("print", (1, printExpr))
                  ]
 
 readExpr :: InnerFunction
-readExpr _ [] = Right . VarString <$> getLine
+readExpr _ [] = VarString <$> liftIO getLine
 
 binaryNumFun :: String -> (Double -> Double -> Double) -> InnerFunction
-binaryNumFun fname f varScopes [a1, a2] = runExceptT $ mergeTwoExprs fname f varScopes a1 a2
+binaryNumFun fname f varScopes [a1, a2] = mergeTwoExprs fname f varScopes a1 a2
 
 printExpr :: InnerFunction
 printExpr varScopes [arg] = do
-  r <- evalExpr varScopes arg
-  case r of
-    Right var -> case var of
-      VarString str -> putStrLn str >> return (Right VarNull)
-      VarNumber str -> putStrLn str >> return (Right VarNull)
-      _ -> return $ Left $ InitialError (snd arg) "can only print numbers and strings"
-    Left e -> return $ Left $ StackTrace (snd arg) "print" e
+  var <- evalExpr varScopes arg
+  case var of
+    VarString str -> printStr str
+    VarNumber str -> printStr str
+    _ -> throwInitial (snd arg) "can only print numbers and strings"
+  where printStr str = do
+          liftIO $ putStrLn str
+          return VarNull
 
-evalExpr :: VarScopes -> ExprPos -> IO (Either EvaluatorError Variable)
-evalExpr _ (ExprNumber str, _) = return $ Right $ VarNumber str
-evalExpr _ (ExprString str, _) = return $ Right $ VarString str
+evalExpr :: VarScopes -> ExprPos -> ExceptT EvaluatorError IO Variable
+evalExpr _ (ExprNumber str, _) = return $ VarNumber str
+evalExpr _ (ExprString str, _) = return $ VarString str
 evalExpr variableScopes (ExprId str, pos) =
-  return $ case findVarById str variableScopes of
-    Just var -> Right var
-    Nothing -> Left $ InitialError pos $ "`" ++ str ++ "` is not initialized" 
+  case findVarById str variableScopes of
+    Just var -> return var
+    Nothing -> throwInitial pos $ "`" ++ str ++ "` is not initialized" 
 evalExpr _ (LambdaDef argNames commandList, pos) =
-  return $ Right $ VarFunction argNames' commandList
+  return $ VarFunction argNames' commandList
   where argNames' = map (str . fst) argNames
 evalExpr variableScopes (FunctionCall (ExprId fname, _) args, pos) = 
   case findVarById fname variableScopes of
     Just (VarFunction argNames body) -> if length argNames /= length args
-      then return $ Left $ InitialError pos $ fname ++ "` expected "
-        ++ show (length argNames) ++ " argument(s), but got "
-        ++ show (length args)
+      then expectedNArgs (length argNames) (length args)
       else do
-        let argsEval = map (evalExpr variableScopes) args
-        let argsEval' = sequence argsEval
-        argVars <- argsEval'
-        let argVars' = rights argVars
-        let variableScopes' = zip argNames argVars':variableScopes
-        ev <- evaluator' variableScopes' (init body)
-        case ev of
-          Left e -> return $ Left $ StackTrace pos fname e
-          Right varScopes' -> evalExpr varScopes' (last body)
-    Just _ -> 
-      return $ Left $ InitialError pos $ "`" ++ fname ++ "` is not a function"
+        argVars <- mapM (evalExpr variableScopes) args
+        let variableScopes' = zip argNames argVars:variableScopes
+        let stackTrace = withExceptT (StackTrace pos fname)
+        varScopes' <- stackTrace $ evaluator' variableScopes' (init body)
+        stackTrace $ evalExpr varScopes' (last body)
+    Just _ -> throwInitial pos $ "`" ++ fname ++ "` is not a function"
     Nothing -> case lookup fname innerFunctions of
       Just (argSize, f) -> if argSize /= length args 
-        then return $ Left $ InitialError pos $ fname ++ "` expected "
-                             ++ show 2 ++ " argument(s), but got "
-                             ++ show argSize
+        then expectedNArgs argSize (length args)
         else f variableScopes args
-      _ -> return $ Left $ InitialError pos $ "`" ++ fname ++ "` is not initialized"
-
+      _ -> throwInitial pos $ "`" ++ fname ++ "` is not initialized"
+  where expectedNArgs n n' = throwInitial pos $ "`" ++ fname ++ "` expected "
+          ++ show n ++ " argument(s), but got "
+          ++ show n'
 evalExpr variableScopes (PatternMatching switch cases defaultCase, pos) = do
+  let (lefts, rights) = unzip cases
   maybeIndex <- findMatch variableScopes switch lefts
-  let expr = case maybeIndex of
-        Right (Just i) -> rights !! i
-        Right Nothing -> defaultCase
-  evalExpr variableScopes expr
-  where (lefts, rights) = unzip cases
-evalExpr _ (NullExpr, _) = return $ Right VarNull 
-evalExpr _ (e, pos) =
-  return $ Left $ InitialError pos "expression can't be evaluted"
+  evalExpr variableScopes $ case maybeIndex of
+    Just i -> rights !! i
+    Nothing -> defaultCase
+evalExpr _ (NullExpr, _) = return VarNull 
+evalExpr _ (e, pos) = throwInitial pos "expression can't be evaluted"
 
 type BinaryFun a = (a -> a -> a)
 
@@ -191,18 +175,18 @@ mergeTwoExprs :: String -> BinaryFun Double
 mergeTwoExprs fname f varScopes lhs rhs = do
   lhsStr <- evalNum' lhs
   rhsStr <- evalNum' rhs
-  let resStr = if '.' `elem` lhsStr -- if not integer
-        then show res
-        else show (floor res::Int) 
-      res = f (read lhsStr) (read rhsStr)
-  return $ VarNumber resStr
+  let res = f (read lhsStr) (read rhsStr)
+  return $ VarNumber $ if '.' `elem` lhsStr -- if not integer
+    then show res
+    else show (floor res::Int) 
   where evalNum' n = evalNum fname n varScopes
 
 evalNum :: String -> ExprPos -> VarScopes
         -> ExceptT EvaluatorError IO String
 evalNum fname (expr, pos) varScopes = do
-  res <- liftIO $ evalExpr varScopes (expr, pos)
-  case res of
-    Right (VarNumber numStr) -> return numStr
-    Left e -> throwE e
-    _ -> throwE $ InitialError pos $ fname ++ ": expected number argument"
+  var <- evalExpr varScopes (expr, pos)
+  case var of
+    VarNumber numStr -> return numStr
+    _ -> throwInitial pos $ fname ++ ": expected number argument"
+
+throwInitial pos str = throwE $ InitialError pos str
