@@ -61,13 +61,11 @@ parser = parser' 0 []
 
 -- program ::= { command ';'}
 parser' :: Int -> Program -> [Token]  -> Either (Int, ParserError) Program
-parser' pos commands tokens = case parseCommand pos tokens of
-  Right (command, [Semicolon]) -> Right (commands ++ [command])
-  Right (command, Semicolon:rest) ->
-    parser' (pos + length tokens - length rest) (commands ++ [command]) rest
-  Left err -> Left err
-  Right what -> Left (pos, ParserError $ "parseCommand returned" ++ show what)
-  -- _ -> Left (pos, ParserError "parser' error")
+parser' _ commands [] = return commands
+parser' pos commands tokens = do
+  (command, rest) <- parseCommand pos tokens
+  rest' <- skipToken Semicolon (pos + length tokens - length rest) rest
+  parser' (pos + length tokens - length rest') (commands ++ [command]) rest'
 
 -- command ::= assignment | functionCall | patternMatching
 parseCommand :: Subparser
@@ -97,21 +95,17 @@ parseCommand pos tokens = case (parseErrors, parseGood) of
 
 -- assignment ::= id "<-" expr
 parseAssignment :: Subparser
-parseAssignment pos (Id string:AssignmentOperator:rest) =
-  case parseExpr (pos + 2) rest of
-    Right (rhs, rest') ->
-      Right ((Assignment (ExprId string, pos) rhs, pos), rest')
-    Left err -> Left err
+parseAssignment pos (Id string:AssignmentOperator:rest) = do
+  (rhs, rest') <- parseExpr (pos + 2) rest
+  return ((Assignment (ExprId string, pos) rhs, pos), rest')
 parseAssignment pos _ = Left (pos, ParserError "parseAssignment error")
 
 -- functionCall ::= id '(' {expr} ')'
 parseFunctionCall :: Subparser
 parseFunctionCall pos [] = Left (pos, ParserError "parseExpr empty")
-parseFunctionCall pos (Id strId:ParenthesisLeft:rest) =
-  case parseFunctionArgs (pos + 2) rest of
-    Right (args, rest') ->
-      Right ((FunctionCall (ExprId strId, pos) args, pos), rest')
-    Left err -> Left err
+parseFunctionCall pos (Id strId:ParenthesisLeft:rest) = do
+  (args, rest') <- parseFunctionArgs (pos + 2) rest
+  return ((FunctionCall (ExprId strId, pos) args, pos), rest')
 parseFunctionCall pos tokens = Left (pos, ParserError "parseFunctionCall error")
 
 parseFunctionArgs :: Int -> [Token]
@@ -121,32 +115,31 @@ parseFunctionArgs = parseFunctionArgs' []
 parseFunctionArgs' :: [ExprPos] -> Int -> [Token]
                    -> Either (Int, ParserError) ([ExprPos], [Token])
 parseFunctionArgs' args pos (ParenthesisRight:rest) = Right (args, rest)
-parseFunctionArgs' args pos tokens = case parseExpr pos tokens of
-  Right (arg, rest) ->
-    parseFunctionArgs' (args ++ [arg]) (pos + length tokens - length rest) rest
-  Left err -> Left err
+parseFunctionArgs' args pos tokens = do
+  (arg, rest) <- parseExpr pos tokens
+  parseFunctionArgs' (args ++ [arg]) (pos + length tokens - length rest) rest
 
 -- patternMatching ::= 'match' expr '{'
 -- 	{expr '->' expr ';'}
 -- 	'_' '->' expr ';' '}'
 parsePatternMatching :: Subparser
-parsePatternMatching pos (MatchKeyword:rest) = case parseExpr (pos + 1) rest of
-  Left err -> Left err
-  Right (switch, BraceLeft:rest') -> case parseMatchBody (pos + 1 + length rest - length rest') rest' of
-    Right (cases, defaultCase, rest'') ->
-      Right ((PatternMatching switch cases defaultCase, pos), rest'')
-    Left err -> Left err
+parsePatternMatching pos (MatchKeyword:rest) = do
+  (switch, rest1) <- parseExpr (pos + 1) rest
+  rest2 <- skipToken BraceLeft (pos + 1 + length rest - length rest1) rest1
+  (cases, defaultCase, rest3) <-
+    parseMatchBody (pos + 1 + length rest - length rest2) rest2
+  return ((PatternMatching switch cases defaultCase, pos), rest3)
 parsePatternMatching pos _ = Left (pos, ParserError "parsePatternMatching error")
 
 parseMatchBody :: Int -> [Token]
                -> Either (Int, ParserError) ([(ExprPos, ExprPos)], ExprPos, [Token])
 parseMatchBody = parseMatchBody' []
 
-parseMatchBody' cases pos (WildCard:MatchArrow:tokens) = case parseExpr (pos + 2) tokens of
-  Right (defaultCase, Semicolon:BraceRight:rest) ->
-    Right (cases, defaultCase, rest)
-  Left err -> Left err
-  _ -> Left (pos, ParserError "parseMatchBody' error default")
+parseMatchBody' cases pos (WildCard:MatchArrow:tokens) = do
+  (defaultCase, rest1) <- parseExpr (pos + 2) tokens
+  rest2 <- skipToken Semicolon (pos + 2 + length tokens - length rest1) rest1
+  rest3 <- skipToken BraceRight (pos + 2 + length tokens - length rest2) rest2
+  Right (cases, defaultCase, rest3)
 parseMatchBody' cases pos tokens = do
   (lhs, rest1) <- parseExpr pos tokens -- expr
   rest2 <- skipToken MatchArrow (posFromRest rest1) rest1 -- '->'
@@ -246,19 +239,18 @@ parseLambdaBody = parseLambdaBody' []
 parseLambdaBody' :: [ExprPos] -> Int -> [Token]
                  -> Either (Int, ParserError) ([ExprPos], [Token])
 parseLambdaBody' commands _ (BraceRight:rest) = Right (commands, rest)
-parseLambdaBody' commands pos tokens = case parseCommand pos tokens of
-  Right (command, Semicolon:rest) ->
-    parseLambdaBody' (commands ++ [command]) (pos + length tokens - length rest) rest
-  Left err -> Left err
-  Right r -> Left (pos, ParserError $ "parserLambdaBody' error, parseCommand returned: " ++ show r)
-  -- _ -> Left (pos, ParserError "parseLambdaBody' error")
+parseLambdaBody' commands pos tokens = do
+  (command, rest) <- parseCommand pos tokens
+  rest' <- skipToken Semicolon (pos + length tokens - length rest) rest
+  parseLambdaBody'
+    (commands ++ [command]) (pos + length tokens - length rest) rest'
 
 -- namedTuple ::= '[' {namedTupleField} ']'
 -- namedTupleField ::= id '=' expr
 parseNamedTuple :: Subparser
-parseNamedTuple pos (BracketLeft:rest) = case parseNamedTupleFields pos rest of
-  Right (fields, rest') -> Right ((NamedTuple fields, pos), rest')
-  Left err -> Left err
+parseNamedTuple pos (BracketLeft:rest) = do
+  (fields, rest') <- parseNamedTupleFields pos rest
+  return ((NamedTuple fields, pos), rest')
 parseNamedTuple pos tokens = Left (pos, ParserError "parseNamedTuple error")
 
 parseNamedTupleFields :: Int -> [Token]
@@ -268,25 +260,26 @@ parseNamedTupleFields = parseNamedTupleFields' []
 parseNamedTupleFields' :: [(ExprPos, ExprPos)] -> Int -> [Token]
                   -> Either (Int, ParserError) ([(ExprPos, ExprPos)], [Token])
 parseNamedTupleFields' fields pos (BracketRight:rest) = Right (fields, rest)
-parseNamedTupleFields' fields pos tokens = case parseNamedTupleField pos tokens of
-  Right (lhs, rhs, rest) -> parseNamedTupleFields'
+parseNamedTupleFields' fields pos tokens = do
+  (lhs, rhs, rest) <- parseNamedTupleField pos tokens
+  parseNamedTupleFields'
     (fields ++ [(lhs, rhs)]) (pos + length tokens - length rest) rest
-  Left err -> Left err
 
 parseNamedTupleField :: Int -> [Token]
                      -> Either (Int, ParserError) (ExprPos, ExprPos, [Token])
-parseNamedTupleField pos (Id lhs:NamedTuppleBindingOperator:rest) =
-  case parseExpr (pos + 2) rest of
-    Right (rhs, rest') -> Right ((ExprId lhs, pos), rhs, rest')
-    Left err -> Left err
-parseNamedTupleField pos _ = Left (pos, ParserError "parseNamedTupleField error")
+parseNamedTupleField pos (Id lhs:NamedTuppleBindingOperator:rest) = do
+  (rhs, rest') <- parseExpr (pos + 2) rest
+  return ((ExprId lhs, pos), rhs, rest')
+parseNamedTupleField pos _ =
+  Left (pos, ParserError "parseNamedTupleField error")
 
 -- tuple ::= '[' {expr} ']'
 parseTuple :: Subparser
-parseTuple pos (BracketLeft:rest) = case parseTupleFields pos rest of
-  Right (fields, rest') -> Right ((Tuple fields, pos), rest')
-  Left err -> Left err
-parseTuple pos tokens = Left (pos, ParserError $ "parseTuple error, tokens: " ++ show tokens)
+parseTuple pos (BracketLeft:rest) = do
+  (fields, rest') <- parseTupleFields pos rest
+  return ((Tuple fields, pos), rest')
+parseTuple pos tokens =
+  Left (pos, ParserError $ "parseTuple error, tokens: " ++ show tokens)
 
 parseTupleFields :: Int -> [Token]
                  -> Either (Int, ParserError) ([ExprPos], [Token])
@@ -295,7 +288,7 @@ parseTupleFields = parseTupleFields' []
 parseTupleFields' :: [ExprPos] -> Int -> [Token]
                   -> Either (Int, ParserError) ([ExprPos], [Token])
 parseTupleFields' fields pos (BracketRight:rest) = Right (fields, rest)
-parseTupleFields' fields pos tokens = case parseExpr pos tokens of
-  Right (field, rest) -> parseTupleFields'
+parseTupleFields' fields pos tokens = do
+  (field, rest) <- parseExpr pos tokens
+  parseTupleFields'
     (fields ++ [field]) (pos + length tokens - length rest) rest
-  Left err -> Left err
