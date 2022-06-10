@@ -68,7 +68,7 @@ parser' :: Program -> Subparser Program
 parser' commands (pos, []) = return (commands, (pos, []))
 parser' commands state = do
   (command, state1) <- parseCommand state
-  state2 <- skipToken "command" Semicolon state1
+  ((), state2) <- skipToken "command" Semicolon state1
   parser' (commands ++ [command]) state2
 
 -- command ::= assignment | functionCall | patternMatching
@@ -100,7 +100,7 @@ parseCommand (pos, tokens) = case (parseErrors, parseGood) of
 parseAssignment :: Subparser ExprPos
 parseAssignment state = do
   (string, state1) <- skipId state
-  state2 <- skipToken "assignment" AssignmentOperator state1
+  ((), state2) <- skipToken "assignment" AssignmentOperator state1
   (rhs, newState) <- parseExpr state2
   return ((Assignment (ExprId string, pos) rhs, pos), newState)
   where pos = fst state
@@ -117,7 +117,7 @@ skipId (pos, tokens) = case listToMaybe tokens of
 parseFunctionCall :: Subparser ExprPos
 parseFunctionCall state = do
   (strId, state1) <- skipId state
-  state2 <- skipToken "functionCall" ParenthesisLeft state1
+  ((), state2) <- skipToken "functionCall" ParenthesisLeft state1
   (args, state3) <- parseFunctionArgs state2
   return ((FunctionCall (ExprId strId, pos) args, pos), state3)
   where pos = fst state
@@ -137,9 +137,9 @@ parseFunctionArgs' args state = do
 -- 	'_' '->' expr ';' '}'
 parsePatternMatching :: Subparser ExprPos
 parsePatternMatching state = do
-  state1 <- skipToken "patternMatch" MatchKeyword state
+  ((), state1) <- skipToken "patternMatch" MatchKeyword state
   (switch, state2) <- parseExpr state1
-  state3 <- skipToken "patternMatch" BraceLeft state2
+  ((), state3) <- skipToken "patternMatch" BraceLeft state2
   ((cases, defaultCase), state4) <- parseMatchBody state3
   return ((PatternMatching switch cases defaultCase, fst state), state4)
 
@@ -149,21 +149,21 @@ parseMatchBody = parseMatchBody' []
 parseMatchBody' :: [(ExprPos, ExprPos)] -> Subparser ([(ExprPos, ExprPos)], ExprPos)
 parseMatchBody' cases (pos, WildCard:MatchArrow:tokens) = do
   (defaultCase, state1) <- parseExpr (pos + 2, tokens)
-  state2 <- skipToken "matchBody" Semicolon state1
-  state3 <- skipToken "matchBody" BraceRight state2
+  ((), state2) <- skipToken "matchBody" Semicolon state1
+  ((), state3) <- skipToken "matchBody" BraceRight state2
   return ((cases, defaultCase), state3)
 parseMatchBody' cases state = do
   (lhs, state1) <- parseExpr state
-  state2 <- skipToken "matchBody" MatchArrow state1
+  ((), state2) <- skipToken "matchBody" MatchArrow state1
   (rhs, state3) <- parseExpr state2
-  state4 <- skipToken "matchBody" Semicolon state3
+  ((), state4) <- skipToken "matchBody" Semicolon state3
   parseMatchBody' (cases ++ [(lhs, rhs)]) state4
 
 -- skipToken :: String -> Token -> SubParser ()
-skipToken :: String -> Token -> ParserState -> Either (Int, ParserError) ParserState
+skipToken :: String -> Token -> Subparser ()
 skipToken fname token (pos, tokens) = case listToMaybe tokens of
   Just first -> if first == token
-    then Right (pos + 1, tail tokens)
+    then Right ((), (pos + 1, tail tokens))
     else Left (pos, error $ "`" ++ showConstr first ++ "`")
   Nothing -> Left (pos, error "empty list of tokens")
   where error suffix = ParserError $ fname ++ ": expected `" ++ showConstr token
@@ -219,7 +219,7 @@ parseExpr state@(pos, tokens) = case (parseErrors, parseGood) of
 parseNamedTupleAcess :: Subparser ExprPos
 parseNamedTupleAcess state = do
   (lhs, state1) <- skipId state
-  state2 <- skipToken "named tuple acess" NamedTuppleAccessOperator state1
+  ((), state2) <- skipToken "named tuple acess" NamedTuppleAccessOperator state1
   (rhs, state3) <- skipId state2
   Right ( ( NamedTuppleAccess
             (ExprId lhs, fst state)
@@ -233,9 +233,9 @@ parseNamedTupleAcess state = do
 -- 	'{' { command ';'} '}'
 parseLambdaDef :: Subparser ExprPos
 parseLambdaDef state = do
-  state1 <- skipToken "lambda definition" ParenthesisLeft state
+  ((), state1) <- skipToken "lambda definition" ParenthesisLeft state
   (args, state2) <- parseLambdaArgs state1
-  state3 <- skipToken "lambda definition" BraceLeft state2
+  ((), state3) <- skipToken "lambda definition" BraceLeft state2
   (body, state4) <- parseLambdaBody state3
   return ((LambdaDef args body, fst state), state4)
 
@@ -256,14 +256,14 @@ parseLambdaBody' :: [ExprPos] -> Subparser [ExprPos]
 parseLambdaBody' commands (pos, BraceRight:rest) = Right (commands, (pos + 1, rest))
 parseLambdaBody' commands state = do
   (command, state1) <- parseCommand state
-  state2 <- skipToken "lambda body" Semicolon state1
+  ((), state2) <- skipToken "lambda body" Semicolon state1
   parseLambdaBody' (commands ++ [command]) state2
 
 -- namedTuple ::= '[' {namedTupleField} ']'
 -- namedTupleField ::= id '=' expr
 parseNamedTuple :: Subparser ExprPos
 parseNamedTuple state = do
-  state1 <- skipToken "named tuple" BracketLeft state
+  ((), state1) <- skipToken "named tuple" BracketLeft state
   (fields, state2) <- parseNamedTupleFields state1
   return ((NamedTuple fields, fst state), state2)
 
@@ -279,14 +279,14 @@ parseNamedTupleFields' fields state = do
 parseNamedTupleField :: Subparser (ExprPos, ExprPos)
 parseNamedTupleField state = do
   (lhs, state1) <- skipId state
-  state2 <- skipToken "named tuple field" NamedTuppleBindingOperator state1
+  ((), state2) <- skipToken "named tuple field" NamedTuppleBindingOperator state1
   (rhs, state3) <- parseExpr state2
   return (((ExprId lhs, fst state), rhs), state3)
 
 -- tuple ::= '[' {expr} ']'
 parseTuple :: Subparser ExprPos
 parseTuple state = do
-  state1 <- skipToken "tuple" BracketLeft state
+  ((), state1) <- skipToken "tuple" BracketLeft state
   (fields, state2) <- parseTupleFields state1
   return ((Tuple fields, fst state), state2)
 
