@@ -88,9 +88,8 @@ parseCommand (pos, tokens) = case (parseErrors, parseGood) of
         parseResultsEither = map (\f -> f (pos, tokens)) subparsers
         (parseErrors, parseGood) = partitionEithers parseResultsEither
         furthestError = maximumBy (compare `on` fst) parseErrors
-        furthestGood = minimumBy (compare `on` (length . snd)) parseGood
-        furthestGoodDist = ((-) `on` length) tokens (snd $ snd furthestGood) + pos
-        furthest = if furthestGoodDist > fst furthestError
+        furthestGood = minimumBy (compare `on` (fst . snd)) parseGood
+        furthest = if fst (snd furthestGood) > fst furthestError
           then Right furthestGood
           else Left furthestError
 
