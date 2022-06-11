@@ -43,7 +43,10 @@ fromTo(0 8 printFib);
 
 # Compile & Use
 You'll need to
-[install stack](https://docs.haskellstack.org/en/stable/README/#how-to-install).
+<a
+	href="https://docs.haskellstack.org/en/stable/README/#how-to-install"
+	target="_blank"
+>install stack</a>.
 When in project's repository:
 ```bash
 stack build# this will compile the project
