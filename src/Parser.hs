@@ -63,9 +63,7 @@ type Subparser a = StateT ParserState (Either (Int, ParserError)) a
 
 
 parser :: [Token] -> Either (Int, ParserError) Program
-parser tokens = do
-  (res, _) <- runStateT (parser' []) (0, tokens)
-  return res
+parser tokens = evalStateT (parser' []) (0, tokens)
 
 -- program ::= { command ';'}
 parser' :: Program -> Subparser Program
