@@ -183,50 +183,48 @@ skipToken fname token = do
 --        | namedTuple
 --        | tuple
 parseExpr :: Subparser ExprPos
-parseExpr = do
+parseExpr = foldl1 chooseSubparser [ parseFunctionCall
+                                   , parseNamedTupleAcess
+                                   , parseLambdaDef
+                                   , parseNamedTuple
+                                   , parseTuple
+                                   , parseNumber
+                                   , parseString
+                                   , parseId
+                                   , parseWildCard
+                                   , parseNull
+                                   ]
+
+matchToken :: (Token -> Maybe Expr) -> String -> Subparser ExprPos
+matchToken mapper errmsg = do
   (pos, tokens) <- get
-  if null tokens
-    then throw (pos, ParserError "parseExpr empty")
-    else do
-      let subparsers = [ parseFunctionCall
-                        , parseNamedTupleAcess
-                        , parseLambdaDef
-                        , parseNamedTuple
-                        , parseTuple
-                        ]
-          parseResultsEither = map (\f -> runStateT f (pos, tokens)) subparsers
-          (parseErrors, parseGood) = partitionEithers parseResultsEither
-          furthestError = maximumBy (compare `on` fst) parseErrors
-          furthestGood = minimumBy (compare `on` (fst . snd)) parseGood
-          furthest = if fst (snd furthestGood) > fst furthestError
-            then Right furthestGood
-            else Left furthestError
-          -- single token cases
-          singleTokenExpr = case head tokens of
-            Number number -> Just $ ExprNumber number
-            StringLiteral string -> Just $ ExprString string
-            Id id -> Just $ ExprId id
-            WildCard -> Just WildCardExpr
-            Null -> Just NullExpr
-            _ -> Nothing
-          returnGood = do
-            let (res, state) = furthestGood
-            put state
-            return res
-      case (parseErrors, parseGood) of
-        -- only errors from complex expressions ->
-        -- if error is on first token we might still have singleTokenExpr
-        (_ , []) -> case singleTokenExpr of
-          Just expr -> do
-            put (pos + 1, tail tokens)
-            return (expr, pos)
-          _ -> throw furthestError
-        -- no errors -> furthest good
-        ([], _ ) -> returnGood
-        -- some errors, and some good -> just return furthest
-        (_ , _ ) -> if fst (snd furthestGood) > fst furthestError
-            then returnGood
-            else throw furthestError
+  case listToMaybe tokens of
+    Just x -> case mapper x of
+      Just expr -> do
+        put (pos + 1, tail tokens)
+        return (expr, pos)
+      _ -> throw (pos, ParserError errmsg)
+    _ -> throw (pos, ParserError "unexpected end of token stream")
+
+parseNumber = matchToken parseNumber' "expected number"
+  where parseNumber' (Number n) = Just $ ExprNumber n
+        parseNumber' _ = Nothing
+
+parseString = matchToken parseString' "expected string"
+  where parseString' (StringLiteral s) = Just $ ExprString s
+        parseString' _ = Nothing
+
+parseId = matchToken parseId' "expected id"
+  where parseId' (Id id) = Just $ ExprId id
+        parseId' _ = Nothing
+
+parseWildCard = matchToken parseWildCard' "expected wildcard"
+  where parseWildCard' WildCard = Just WildCardExpr
+        parseWildCard' _ = Nothing
+
+parseNull = matchToken parseNull' "expected NULL"
+  where parseNull' Null = Just NullExpr
+        parseNull' _ = Nothing
 
 -- namedTupleAcess ::= id ':' id
 parseNamedTupleAcess :: Subparser ExprPos
