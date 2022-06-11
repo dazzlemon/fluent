@@ -78,35 +78,10 @@ parser' commands = do
 
 -- command ::= assignment | functionCall | patternMatching
 parseCommand :: Subparser ExprPos
-parseCommand = do
-  (pos, tokens) <- get
-  if null tokens
-    then return (Empty, pos)
-    else do
-      let subparsers = [ parseAssignment
-                       , parseFunctionCall
-                       , parsePatternMatching
-                       ]
-          parseResultsEither = map (\f -> runStateT f (pos, tokens)) subparsers
-          (parseErrors, parseGood) = partitionEithers parseResultsEither
-          furthestError = maximumBy (compare `on` fst) parseErrors
-          furthestGood = minimumBy (compare `on` (fst . snd)) parseGood
-          returnGood = do
-            let (res, state) = furthestGood
-            put state
-            return res
-      case (parseErrors, parseGood) of
-        -- only errors -> furthest error
-        (_ , []) -> throw $ if fst furthestError == pos
-          then (pos, ParserError "Unknown construction")
-          else furthestError
-        -- no errors -> furthest good
-        ([], _ ) -> returnGood
-        -- some errors, and some good -> just return furthest
-        (_ , _ ) -> if fst (snd furthestGood) > fst furthestError
-            then returnGood
-            else throw furthestError
-
+parseCommand = foldl1 chooseSubparser [ parseAssignment
+                                      , parseFunctionCall
+                                      , parsePatternMatching
+                                      ]
 throw = lift . Left
 
 -- assignment ::= id "<-" expr
@@ -143,15 +118,13 @@ parseFunctionArgs :: Subparser [ExprPos]
 parseFunctionArgs = parseFunctionArgs' []
 
 parseFunctionArgs' :: [ExprPos] -> Subparser [ExprPos]
-parseFunctionArgs' args = do
-  (pos, tokens) <- get
-  case listToMaybe tokens of
-    Just ParenthesisRight -> do
-      put (pos + 1, tail tokens)
-      return args
-    _ -> do
-      arg <- parseExpr
-      parseFunctionArgs' (args ++ [arg])
+parseFunctionArgs' args = chooseSubparser end continue
+  where end = do
+          skipToken "functiona call args end" ParenthesisRight
+          return args
+        continue = do
+          arg <- parseExpr
+          parseFunctionArgs' (args ++ [arg])
 
 -- patternMatching ::= 'match' expr '{'
 -- 	{expr '->' expr ';'}
@@ -279,17 +252,38 @@ parseLambdaDef = do
 parseLambdaArgs :: Subparser [ExprPos]
 parseLambdaArgs = parseLambdaArgs' []
 
+chooseSubparser :: Subparser a -> Subparser a -> Subparser a
+chooseSubparser p1 p2 = do
+  state <- get
+  let r1 = runStateT p1 state
+  let r2 = runStateT p2 state
+  case (r1, r2) of
+    (Left l1, Left l2) -> throwFurthest l1 l2
+    (Right g1, Right g2) -> returnFurthest g1 g2
+    (Left l, Right g) -> returnOrThrowFurthest g l
+    (Right g, Left l) -> returnOrThrowFurthest g l
+  where throwFurthest (p1, e1) (p2, e2) = throw $ if p1 >= p2
+          then (p1, e1)
+          else (p2, e2)
+        return' (a, (d, t)) = do
+          put (d, t)
+          return a
+        returnFurthest (a1, (d1, t1)) (a2, (d2, t2)) = return' $ if d1 >= d2
+          then (a1, (d1, t1))
+          else (a2, (d2, t2))
+        returnOrThrowFurthest (a, (d, t)) (p, e) = if d >= p
+          then return' (a, (d, t))
+          else throw (p, e)
+
 parseLambdaArgs' :: [ExprPos] -> Subparser [ExprPos]
-parseLambdaArgs' args = do
-  (pos, tokens) <- get
-  case listToMaybe tokens of
-    Just ParenthesisRight -> do
-      put (pos + 1, tail tokens)
-      return args
-    Just (Id arg) -> do
-      put (pos + 1, tail tokens)
-      parseLambdaArgs' (args ++ [(ExprId arg, pos)])
-    _ -> throw (pos, ParserError "parseLambdaArgs' error")
+parseLambdaArgs' args = chooseSubparser end continue
+  where end = do
+          skipToken "lambda args end" ParenthesisRight
+          return args
+        continue = do
+          (pos, _) <- get
+          arg <- skipId
+          parseLambdaArgs' (args ++ [(ExprId arg, pos)])
 
 parseLambdaBody :: Subparser [ExprPos]
 parseLambdaBody = parseLambdaBody' []
