@@ -46,7 +46,8 @@ You'll need to
 <a href="https://docs.haskellstack.org/en/stable/README/#how-to-install" target="_blank" rel="noreferrer noopener">install stack</a>.
 When in project's repository:
 ```bash
-stack build# this will compile the project
+# this will compile the project
+stack build
 
 # you can extract exe and use it separately
 stack path --local-install-root# this will show where you can find built exe
