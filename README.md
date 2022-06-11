@@ -41,6 +41,24 @@ fromTo(0 8 printFib);
 21
 ```
 
+# Compile & Use
+You'll need to
+[install stack](https://docs.haskellstack.org/en/stable/README/#how-to-install.
+When in project's repository:
+```bash
+stack build# this will compile the project
+
+# you can extract exe and use it separately
+stack path --local-install-root# this will show where you can find built exe
+# e.g this returns ~/github/fluent/.stack-work/install/x86_64-linux-tinfo6/026e5ea1a4d73b5051b30008ef9d7bb4db7a2d25ce9db4b6c46b70d05993998d/9.0.2
+# this means exe is at ~/github/fluent/.stack-work/install/x86_64-linux-tinfo6/026e5ea1a4d73b5051b30008ef9d7bb4db7a2d25ce9db4b6c46b70d05993998d/9.0.2/bin/fluent-exe
+
+fluent-exe fib.fluent
+
+# or you can use it with stack
+stack exec -- fluent-exe fib.fluent
+```
+
 # Syntax
 
 Syntax of the language is pretty straight forward, here it is described in ebnf:
