@@ -142,21 +142,20 @@ parseMatchBody :: Subparser ([(ExprPos, ExprPos)], ExprPos)
 parseMatchBody = parseMatchBody' []
 
 parseMatchBody' :: [(ExprPos, ExprPos)] -> Subparser ([(ExprPos, ExprPos)], ExprPos)
-parseMatchBody' cases = do
-  (pos, tokens) <- get
-  case tokens of
-    (WildCard:MatchArrow:rest) -> do
-      put (pos + 2, rest)
-      defaultCase <- parseExpr
-      skipToken "matchBody" Semicolon
-      skipToken "matchBody" BraceRight
-      return (cases, defaultCase)
-    _ -> do
-      lhs <- parseExpr
-      skipToken "matchBody" MatchArrow
-      rhs <- parseExpr
-      skipToken "matchBody" Semicolon
-      parseMatchBody' (cases ++ [(lhs, rhs)])
+parseMatchBody' cases = chooseSubparser end continue
+  where end = do
+          skipToken "pattern match body end" WildCard
+          skipToken "pattern match body end" MatchArrow
+          defaultCase <- parseExpr
+          skipToken "matchBody" Semicolon
+          skipToken "matchBody" BraceRight
+          return (cases, defaultCase)
+        continue = do
+          lhs <- parseExpr
+          skipToken "matchBody" MatchArrow
+          rhs <- parseExpr
+          skipToken "matchBody" Semicolon
+          parseMatchBody' (cases ++ [(lhs, rhs)])
 
 skipToken :: String -> Token -> Subparser ()
 skipToken fname token = do
@@ -271,16 +270,14 @@ parseLambdaBody :: Subparser [ExprPos]
 parseLambdaBody = parseLambdaBody' []
 
 parseLambdaBody' :: [ExprPos] -> Subparser [ExprPos]
-parseLambdaBody' commands = do
-  (pos, tokens) <- get
-  case tokens of
-    (BraceRight:rest) -> do
-      put (pos + 1, rest)
-      return commands
-    _ -> do
-      command <- parseCommand
-      skipToken "lambda body" Semicolon
-      parseLambdaBody' (commands ++ [command])
+parseLambdaBody' commands = chooseSubparser end continue
+  where end = do
+          skipToken "lambda body end" BraceRight
+          return commands
+        continue = do
+          command <- parseCommand
+          skipToken "lambda body" Semicolon
+          parseLambdaBody' (commands ++ [command])
 
 -- namedTuple ::= '[' {namedTupleField} ']'
 -- namedTupleField ::= id '=' expr
@@ -295,15 +292,13 @@ parseNamedTupleFields :: Subparser [(ExprPos, ExprPos)]
 parseNamedTupleFields = parseNamedTupleFields' []
 
 parseNamedTupleFields' :: [(ExprPos, ExprPos)] -> Subparser [(ExprPos, ExprPos)]
-parseNamedTupleFields' fields = do
-  (pos, tokens) <- get
-  case tokens of
-    (BracketRight:rest) -> do
-      put (pos + 1, rest)
-      return fields
-    _ -> do
-      (lhs, rhs) <- parseNamedTupleField
-      parseNamedTupleFields' (fields ++ [(lhs, rhs)])
+parseNamedTupleFields' fields = chooseSubparser end continue
+  where end = do
+          skipToken "tuple end" BracketRight
+          return fields
+        continue = do
+          (lhs, rhs) <- parseNamedTupleField
+          parseNamedTupleFields' (fields ++ [(lhs, rhs)])
 
 parseNamedTupleField :: Subparser (ExprPos, ExprPos)
 parseNamedTupleField = do
@@ -325,12 +320,10 @@ parseTupleFields :: Subparser [ExprPos]
 parseTupleFields = parseTupleFields' []
 
 parseTupleFields' :: [ExprPos] -> Subparser [ExprPos]
-parseTupleFields' fields = do
-  (pos, tokens) <- get
-  case tokens of
-    (BracketRight:rest) -> do
-      put (pos + 1, rest)
-      return fields
-    _ -> do
-      field <- parseExpr
-      parseTupleFields' (fields ++ [field])
+parseTupleFields' fields = chooseSubparser end continue
+  where end = do
+          skipToken "tuple end" BracketRight
+          return fields
+        continue = do
+          field <- parseExpr
+          parseTupleFields' (fields ++ [field])
