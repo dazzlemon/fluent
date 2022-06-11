@@ -7,6 +7,8 @@ import Data.Either (partitionEithers)
 import Data.Function (on)
 import Data.Data (Typeable, Data, Constr, toConstr)
 import Data.Maybe (listToMaybe)
+import Control.Monad.Trans.State
+import Control.Monad.Trans.Class (lift)
 
 -- int represents # of token, needed for better error messages in Evaluator.hs
 type ExprPos = (Expr, Int)
@@ -54,118 +56,147 @@ newtype ParserError = ParserError String deriving (Show, Data, Eq)
 --                  pos  rest
 type ParserState = (Int, [Token])
 
-type Subparser a = ParserState
---                      (unexpectedTokenOffset, err) (res, newState)
-              -> Either (Int,           ParserError) (a, ParserState)
- 
+-- type Subparser a = ParserState
+-- --                      (unexpectedTokenOffset, err) (res, newState)
+--               -> Either (Int,           ParserError) (a, ParserState)
+type Subparser a = StateT ParserState (Either (Int, ParserError)) a
+
+
 parser :: [Token] -> Either (Int, ParserError) Program
 parser tokens = do
-  (ast, _) <- parser' [] (0, tokens)
-  return ast
+  (res, _) <- runStateT (parser' []) (0, tokens)
+  return res
 
 -- program ::= { command ';'}
 parser' :: Program -> Subparser Program
-parser' commands (pos, []) = return (commands, (pos, []))
-parser' commands state = do
-  (command, state1) <- parseCommand state
-  ((), state2) <- skipToken "command" Semicolon state1
-  parser' (commands ++ [command]) state2
+parser' commands = do
+  (pos, tokens) <- get
+  if null tokens
+    then return commands
+    else do
+      command <- parseCommand
+      skipToken "command" Semicolon
+      parser' (commands ++ [command])
 
 -- command ::= assignment | functionCall | patternMatching
 parseCommand :: Subparser ExprPos
-parseCommand (pos, []) = Right ((Empty, pos), (pos, []))
-parseCommand (pos, tokens) = case (parseErrors, parseGood) of
-  -- only errors -> furthest error
-  (_ , []) -> if fst furthestError == pos
-    then Left (pos, ParserError "Unknown construction")
-    else Left furthestError
-  -- no errors -> furthest good
-  ([], _ ) -> Right furthestGood
-  -- some errors, and some good -> just return furthest
-  (_ , _ ) -> furthest
-  where subparsers = [ parseAssignment
-                     , parseFunctionCall
-                     , parsePatternMatching
-                     ]
-        parseResultsEither = map (\f -> f (pos, tokens)) subparsers
-        (parseErrors, parseGood) = partitionEithers parseResultsEither
-        furthestError = maximumBy (compare `on` fst) parseErrors
-        furthestGood = minimumBy (compare `on` (fst . snd)) parseGood
-        furthest = if fst (snd furthestGood) > fst furthestError
-          then Right furthestGood
-          else Left furthestError
+parseCommand = do
+  (pos, tokens) <- get
+  if null tokens
+    then return (Empty, pos)
+    else do
+      let subparsers = [ parseAssignment
+                       , parseFunctionCall
+                       , parsePatternMatching
+                       ]
+          parseResultsEither = map (\f -> runStateT f (pos, tokens)) subparsers
+          (parseErrors, parseGood) = partitionEithers parseResultsEither
+          furthestError = maximumBy (compare `on` fst) parseErrors
+          furthestGood = minimumBy (compare `on` (fst . snd)) parseGood
+          returnGood = do
+            let (res, state) = furthestGood
+            put state
+            return res
+      case (parseErrors, parseGood) of
+        -- only errors -> furthest error
+        (_ , []) -> throw $ if fst furthestError == pos
+          then (pos, ParserError "Unknown construction")
+          else furthestError
+        -- no errors -> furthest good
+        ([], _ ) -> returnGood
+        -- some errors, and some good -> just return furthest
+        (_ , _ ) -> if fst (snd furthestGood) > fst furthestError
+            then returnGood
+            else throw furthestError
 
+throw = lift . Left
 
 -- assignment ::= id "<-" expr
 parseAssignment :: Subparser ExprPos
-parseAssignment state = do
-  (string, state1) <- skipId state
-  ((), state2) <- skipToken "assignment" AssignmentOperator state1
-  (rhs, newState) <- parseExpr state2
-  return ((Assignment (ExprId string, pos) rhs, pos), newState)
-  where pos = fst state
+parseAssignment = do
+  (pos, _) <- get
+  string <- skipId
+  skipToken "assignment" AssignmentOperator
+  rhs <- parseExpr
+  return (Assignment (ExprId string, pos) rhs, pos)
 
 skipId :: Subparser String
-skipId (pos, tokens) = case listToMaybe tokens of
-  Just (Id string) -> return (string, (pos + 1, tail tokens))
-  Just first -> Left (pos, error first)
-  Nothing -> Left (pos, error "empty list of tokens")
+skipId = do
+  (pos, tokens) <- get
+  case listToMaybe tokens of
+    Just (Id string) -> do
+      put (pos + 1, tail tokens)
+      return string
+    Just first -> throw (pos, error first)
+    Nothing -> throw (pos, error "empty list of tokens")
   where error got =
           ParserError $ "expected `Id`, but got " ++ show (toConstr got)
 
 -- functionCall ::= id '(' {expr} ')'
 parseFunctionCall :: Subparser ExprPos
-parseFunctionCall state = do
-  (strId, state1) <- skipId state
-  ((), state2) <- skipToken "functionCall" ParenthesisLeft state1
-  (args, state3) <- parseFunctionArgs state2
-  return ((FunctionCall (ExprId strId, pos) args, pos), state3)
-  where pos = fst state
+parseFunctionCall = do
+  (pos, _) <- get
+  strId <- skipId
+  skipToken "functionCall" ParenthesisLeft
+  args <- parseFunctionArgs
+  return (FunctionCall (ExprId strId, pos) args, pos)
 
 parseFunctionArgs :: Subparser [ExprPos]
 parseFunctionArgs = parseFunctionArgs' []
 
 parseFunctionArgs' :: [ExprPos] -> Subparser [ExprPos]
-parseFunctionArgs' args (pos, ParenthesisRight:rest) =
-  Right (args, (pos + 1, rest))
-parseFunctionArgs' args state = do
-  (arg, state') <- parseExpr state
-  parseFunctionArgs' (args ++ [arg]) state'
+parseFunctionArgs' args = do
+  (pos, tokens) <- get
+  case listToMaybe tokens of
+    Just ParenthesisRight -> do
+      put (pos + 1, tail tokens)
+      return args
+    _ -> do
+      arg <- parseExpr
+      parseFunctionArgs' (args ++ [arg])
 
 -- patternMatching ::= 'match' expr '{'
 -- 	{expr '->' expr ';'}
 -- 	'_' '->' expr ';' '}'
 parsePatternMatching :: Subparser ExprPos
-parsePatternMatching state = do
-  ((), state1) <- skipToken "patternMatch" MatchKeyword state
-  (switch, state2) <- parseExpr state1
-  ((), state3) <- skipToken "patternMatch" BraceLeft state2
-  ((cases, defaultCase), state4) <- parseMatchBody state3
-  return ((PatternMatching switch cases defaultCase, fst state), state4)
+parsePatternMatching = do
+  (pos, _) <- get
+  skipToken "patternMatch" MatchKeyword
+  switch <- parseExpr
+  skipToken "patternMatch" BraceLeft
+  (cases, defaultCase) <- parseMatchBody
+  return (PatternMatching switch cases defaultCase, pos)
 
 parseMatchBody :: Subparser ([(ExprPos, ExprPos)], ExprPos)
 parseMatchBody = parseMatchBody' []
 
 parseMatchBody' :: [(ExprPos, ExprPos)] -> Subparser ([(ExprPos, ExprPos)], ExprPos)
-parseMatchBody' cases (pos, WildCard:MatchArrow:tokens) = do
-  (defaultCase, state1) <- parseExpr (pos + 2, tokens)
-  ((), state2) <- skipToken "matchBody" Semicolon state1
-  ((), state3) <- skipToken "matchBody" BraceRight state2
-  return ((cases, defaultCase), state3)
-parseMatchBody' cases state = do
-  (lhs, state1) <- parseExpr state
-  ((), state2) <- skipToken "matchBody" MatchArrow state1
-  (rhs, state3) <- parseExpr state2
-  ((), state4) <- skipToken "matchBody" Semicolon state3
-  parseMatchBody' (cases ++ [(lhs, rhs)]) state4
+parseMatchBody' cases = do
+  (pos, tokens) <- get
+  case tokens of
+    (WildCard:MatchArrow:rest) -> do
+      put (pos + 2, rest)
+      defaultCase <- parseExpr
+      skipToken "matchBody" Semicolon
+      skipToken "matchBody" BraceRight
+      return (cases, defaultCase)
+    _ -> do
+      lhs <- parseExpr
+      skipToken "matchBody" MatchArrow
+      rhs <- parseExpr
+      skipToken "matchBody" Semicolon
+      parseMatchBody' (cases ++ [(lhs, rhs)])
 
--- skipToken :: String -> Token -> SubParser ()
 skipToken :: String -> Token -> Subparser ()
-skipToken fname token (pos, tokens) = case listToMaybe tokens of
-  Just first -> if first == token
-    then Right ((), (pos + 1, tail tokens))
-    else Left (pos, error $ "`" ++ showConstr first ++ "`")
-  Nothing -> Left (pos, error "empty list of tokens")
+skipToken fname token = do
+  (pos, tokens) <- get
+  case listToMaybe tokens of
+    Just first -> if first == token
+      then do
+        put (pos + 1, tail tokens)
+        return ()
+      else throw (pos, error $ "`" ++ showConstr first ++ "`")
+    Nothing -> throw (pos, error "empty list of tokens")
   where error suffix = ParserError $ fname ++ ": expected `" ++ showConstr token
                                   ++ "`, but got " ++ suffix
         showConstr = show . toConstr
@@ -181,120 +212,151 @@ skipToken fname token (pos, tokens) = case listToMaybe tokens of
 --        | namedTuple
 --        | tuple
 parseExpr :: Subparser ExprPos
-parseExpr (pos, []) = Left (pos, ParserError "parseExpr empty")
-parseExpr state@(pos, tokens) = case (parseErrors, parseGood) of
-  -- only errors from complex expressions ->
-  -- if error is on first token we might still have singleTokenExpr
-  (_ , []) -> case singleTokenExpr of
-    Just expr -> Right ((expr, pos), (pos + 1, tail tokens))
-    _ -> Left furthestError
-  -- no errors -> furthest good
-  ([], _ ) -> Right furthestGood
-  -- some errors, and some good -> just return furthest
-  (_ , _ ) -> furthest
-        -- cases with subExpressions
-  where subparsers = [ parseFunctionCall
-                     , parseNamedTupleAcess
-                     , parseLambdaDef
-                     , parseNamedTuple
-                     , parseTuple
-                     ]
-        parseResultsEither = map ($ state) subparsers
-        (parseErrors, parseGood) = partitionEithers parseResultsEither
-        furthestError = maximumBy (compare `on` fst) parseErrors
-        furthestGood = minimumBy (compare `on` (fst . snd)) parseGood
-        furthest = if fst (snd furthestGood) > fst furthestError
-          then Right furthestGood
-          else Left furthestError
-        -- single token cases
-        singleTokenExpr = case head tokens of
-          Number number -> Just $ ExprNumber number
-          StringLiteral string -> Just $ ExprString string
-          Id id -> Just $ ExprId id
-          WildCard -> Just WildCardExpr
-          Null -> Just NullExpr
-          _ -> Nothing
+parseExpr = do
+  (pos, tokens) <- get
+  if null tokens
+    then throw (pos, ParserError "parseExpr empty")
+    else do
+      let subparsers = [ parseFunctionCall
+                        , parseNamedTupleAcess
+                        , parseLambdaDef
+                        , parseNamedTuple
+                        , parseTuple
+                        ]
+          parseResultsEither = map (\f -> runStateT f (pos, tokens)) subparsers
+          (parseErrors, parseGood) = partitionEithers parseResultsEither
+          furthestError = maximumBy (compare `on` fst) parseErrors
+          furthestGood = minimumBy (compare `on` (fst . snd)) parseGood
+          furthest = if fst (snd furthestGood) > fst furthestError
+            then Right furthestGood
+            else Left furthestError
+          -- single token cases
+          singleTokenExpr = case head tokens of
+            Number number -> Just $ ExprNumber number
+            StringLiteral string -> Just $ ExprString string
+            Id id -> Just $ ExprId id
+            WildCard -> Just WildCardExpr
+            Null -> Just NullExpr
+            _ -> Nothing
+          returnGood = do
+            let (res, state) = furthestGood
+            put state
+            return res
+      case (parseErrors, parseGood) of
+        -- only errors from complex expressions ->
+        -- if error is on first token we might still have singleTokenExpr
+        (_ , []) -> case singleTokenExpr of
+          Just expr -> do
+            put (pos + 1, tail tokens)
+            return (expr, pos)
+          _ -> throw furthestError
+        -- no errors -> furthest good
+        ([], _ ) -> returnGood
+        -- some errors, and some good -> just return furthest
+        (_ , _ ) -> if fst (snd furthestGood) > fst furthestError
+            then returnGood
+            else throw furthestError
 
 -- namedTupleAcess ::= id ':' id
 parseNamedTupleAcess :: Subparser ExprPos
-parseNamedTupleAcess state = do
-  (lhs, state1) <- skipId state
-  ((), state2) <- skipToken "named tuple acess" NamedTuppleAccessOperator state1
-  (rhs, state3) <- skipId state2
-  Right ( ( NamedTuppleAccess
-            (ExprId lhs, fst state)
-            (ExprId rhs, fst state3)
-          , fst state
-          )
-        , state3
-        )
+parseNamedTupleAcess = do
+  (pos, _) <- get
+  lhs <- skipId
+  skipToken "named tuple acess" NamedTuppleAccessOperator
+  (pos2, _) <- get
+  rhs <- skipId
+  return (NamedTuppleAccess (ExprId lhs, pos) (ExprId rhs, pos2), pos)
 
 -- lambdaDef ::= '(' {id} ')' 
 -- 	'{' { command ';'} '}'
 parseLambdaDef :: Subparser ExprPos
-parseLambdaDef state = do
-  ((), state1) <- skipToken "lambda definition" ParenthesisLeft state
-  (args, state2) <- parseLambdaArgs state1
-  ((), state3) <- skipToken "lambda definition" BraceLeft state2
-  (body, state4) <- parseLambdaBody state3
-  return ((LambdaDef args body, fst state), state4)
+parseLambdaDef = do
+  (pos, _) <- get
+  skipToken "lambda definition" ParenthesisLeft
+  args <- parseLambdaArgs
+  skipToken "lambda definition" BraceLeft
+  body <- parseLambdaBody
+  return (LambdaDef args body, pos)
 
 parseLambdaArgs :: Subparser [ExprPos]
 parseLambdaArgs = parseLambdaArgs' []
 
 parseLambdaArgs' :: [ExprPos] -> Subparser [ExprPos]
-parseLambdaArgs' args (pos, ParenthesisRight:rest) =
-  Right (args, (pos + 1, rest))
-parseLambdaArgs' args (pos, Id arg:rest) =
-  parseLambdaArgs' (args ++ [(ExprId arg, pos)]) (pos + 1, rest)
-parseLambdaArgs' _ (pos, _) = Left (pos, ParserError "parseLambdaArgs' error")
+parseLambdaArgs' args = do
+  (pos, tokens) <- get
+  case listToMaybe tokens of
+    Just ParenthesisRight -> do
+      put (pos + 1, tail tokens)
+      return args
+    Just (Id arg) -> do
+      put (pos + 1, tail tokens)
+      parseLambdaArgs' (args ++ [(ExprId arg, pos)])
+    _ -> throw (pos, ParserError "parseLambdaArgs' error")
 
 parseLambdaBody :: Subparser [ExprPos]
 parseLambdaBody = parseLambdaBody' []
 
 parseLambdaBody' :: [ExprPos] -> Subparser [ExprPos]
-parseLambdaBody' commands (pos, BraceRight:rest) = Right (commands, (pos + 1, rest))
-parseLambdaBody' commands state = do
-  (command, state1) <- parseCommand state
-  ((), state2) <- skipToken "lambda body" Semicolon state1
-  parseLambdaBody' (commands ++ [command]) state2
+parseLambdaBody' commands = do
+  (pos, tokens) <- get
+  case tokens of
+    (BraceRight:rest) -> do
+      put (pos + 1, rest)
+      return commands
+    _ -> do
+      command <- parseCommand
+      skipToken "lambda body" Semicolon
+      parseLambdaBody' (commands ++ [command])
 
 -- namedTuple ::= '[' {namedTupleField} ']'
 -- namedTupleField ::= id '=' expr
 parseNamedTuple :: Subparser ExprPos
-parseNamedTuple state = do
-  ((), state1) <- skipToken "named tuple" BracketLeft state
-  (fields, state2) <- parseNamedTupleFields state1
-  return ((NamedTuple fields, fst state), state2)
+parseNamedTuple = do
+  (pos, _) <- get
+  skipToken "named tuple" BracketLeft
+  fields <- parseNamedTupleFields
+  return (NamedTuple fields, pos)
 
 parseNamedTupleFields :: Subparser [(ExprPos, ExprPos)]
 parseNamedTupleFields = parseNamedTupleFields' []
 
 parseNamedTupleFields' :: [(ExprPos, ExprPos)] -> Subparser [(ExprPos, ExprPos)]
-parseNamedTupleFields' fields (pos, BracketRight:rest) = Right (fields, (pos + 1, rest))
-parseNamedTupleFields' fields state = do
-  ((lhs, rhs), state1) <- parseNamedTupleField state
-  parseNamedTupleFields' (fields ++ [(lhs, rhs)]) state1
+parseNamedTupleFields' fields = do
+  (pos, tokens) <- get
+  case tokens of
+    (BracketRight:rest) -> do
+      put (pos + 1, rest)
+      return fields
+    _ -> do
+      (lhs, rhs) <- parseNamedTupleField
+      parseNamedTupleFields' (fields ++ [(lhs, rhs)])
 
 parseNamedTupleField :: Subparser (ExprPos, ExprPos)
-parseNamedTupleField state = do
-  (lhs, state1) <- skipId state
-  ((), state2) <- skipToken "named tuple field" NamedTuppleBindingOperator state1
-  (rhs, state3) <- parseExpr state2
-  return (((ExprId lhs, fst state), rhs), state3)
+parseNamedTupleField = do
+  (pos, _) <- get
+  lhs <- skipId
+  skipToken "named tuple field" NamedTuppleBindingOperator
+  rhs <- parseExpr
+  return ((ExprId lhs, pos), rhs)
 
 -- tuple ::= '[' {expr} ']'
 parseTuple :: Subparser ExprPos
-parseTuple state = do
-  ((), state1) <- skipToken "tuple" BracketLeft state
-  (fields, state2) <- parseTupleFields state1
-  return ((Tuple fields, fst state), state2)
+parseTuple = do
+  (pos, _) <- get
+  skipToken "tuple" BracketLeft
+  fields <- parseTupleFields
+  return (Tuple fields, pos)
 
 parseTupleFields :: Subparser [ExprPos]
 parseTupleFields = parseTupleFields' []
 
 parseTupleFields' :: [ExprPos] -> Subparser [ExprPos]
-parseTupleFields' fields (pos, BracketRight:rest) = Right (fields, (pos + 1, rest))
-parseTupleFields' fields state = do
-  (field, state1) <- parseExpr state
-  parseTupleFields' (fields ++ [field]) state1
+parseTupleFields' fields = do
+  (pos, tokens) <- get
+  case tokens of
+    (BracketRight:rest) -> do
+      put (pos + 1, rest)
+      return fields
+    _ -> do
+      field <- parseExpr
+      parseTupleFields' (fields ++ [field])
