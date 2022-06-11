@@ -270,4 +270,4 @@ myFunction(3 2);# this will return 5
 Tuple basically stores whatever list of values you give it.
 
 ### named tuple
-Named tuple stores these values with some names, for ease of acess.
+Named tuple stores these values with some names, for ease of access.
