@@ -188,43 +188,27 @@ parseExpr = foldl1 chooseSubparser [ parseFunctionCall
                                    , parseLambdaDef
                                    , parseNamedTuple
                                    , parseTuple
-                                   , parseNumber
-                                   , parseString
-                                   , parseId
-                                   , parseWildCard
-                                   , parseNull
+                                   , singleTokenExpr
                                    ]
 
-matchToken :: (Token -> Maybe Expr) -> String -> Subparser ExprPos
-matchToken mapper errmsg = do
+singleTokenExpr :: Subparser ExprPos
+singleTokenExpr = do
   (pos, tokens) <- get
   case listToMaybe tokens of
-    Just x -> case mapper x of
-      Just expr -> do
-        put (pos + 1, tail tokens)
-        return (expr, pos)
-      _ -> throw (pos, ParserError errmsg)
+    Just x -> do
+      let maybeExpr = case x of
+            Number n -> Just $ ExprNumber n
+            StringLiteral s -> Just $ ExprString s
+            Id id -> Just $ ExprId id
+            WildCard -> Just WildCardExpr
+            Null -> Just NullExpr
+            _ -> Nothing
+      case maybeExpr of
+        Nothing -> throw (pos, ParserError "expected simple expression")
+        Just expr -> do
+          put (pos + 1, tail tokens)
+          return (expr, pos)
     _ -> throw (pos, ParserError "unexpected end of token stream")
-
-parseNumber = matchToken parseNumber' "expected number"
-  where parseNumber' (Number n) = Just $ ExprNumber n
-        parseNumber' _ = Nothing
-
-parseString = matchToken parseString' "expected string"
-  where parseString' (StringLiteral s) = Just $ ExprString s
-        parseString' _ = Nothing
-
-parseId = matchToken parseId' "expected id"
-  where parseId' (Id id) = Just $ ExprId id
-        parseId' _ = Nothing
-
-parseWildCard = matchToken parseWildCard' "expected wildcard"
-  where parseWildCard' WildCard = Just WildCardExpr
-        parseWildCard' _ = Nothing
-
-parseNull = matchToken parseNull' "expected NULL"
-  where parseNull' Null = Just NullExpr
-        parseNull' _ = Nothing
 
 -- namedTupleAcess ::= id ':' id
 parseNamedTupleAcess :: Subparser ExprPos
