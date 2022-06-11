@@ -1,6 +1,8 @@
 # fluent
-This an interpreter for dynamically typed language 'fluent'.
-Currently it only supports a subset of the language, but it allows for some simple programs.
+This an interpreter for dynamically typed,
+functional, immutable language 'fluent'.
+Currently it only supports a subset of the language,
+but it allows for some simple programs.
 
 following snippet prints first 9 numbers of fibonacci sequence:
 ```
@@ -39,8 +41,11 @@ fromTo(0 8 printFib);
 21
 ```
 
+# Syntax
+
 Syntax of the language is pretty straight forward, here it is described in ebnf:
 
+## EBNF
 ```
 digit ::= '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9'
 
@@ -103,10 +108,12 @@ command ::= assignment | functionCall | patternMatching
 program ::= { command ';'}
 ```
 
+## Commands
 Basically programm consists of 1 or more commands,
 which can be either assignment, function call or pattern matching.
 Return value of the function call and pattern matching is ommited in this case.
 
+### Assignment
 Assignment (actually more like binding) syntax
 consists of left hand side (identifier), and right hand side -
 expressions that will be evaluated and identifier will refer to it.
@@ -114,6 +121,7 @@ expressions that will be evaluated and identifier will refer to it.
 someVariable <- someExpression;
 ```
 
+### Function call
 Function call consists of the same building blocks:
 first we have an identifier, which has to refer
 to some function (internal or previously defined by user),
@@ -124,6 +132,7 @@ and provided to function.
 someFunction(someArg1 someFunction2(someArg2) 3);
 ```
 
+### Pattern matching
 Pattern matching is a bit more complex,
 but is very simillar to switch statement:
 basically you have a switch and some cases as well as default one,
@@ -183,8 +192,12 @@ match [f1=a f2=c f3=whatever f4=_] {
 }
 ```
 
+## Expressions
 Expressions were mostly explained in previous part,
-but we will go trough them again. First are numbers, here are some examples:
+but we will go trough them again.
+
+### Numbers
+First are numbers, here are some examples:
 ```
 1
 0
@@ -194,26 +207,33 @@ but we will go trough them again. First are numbers, here are some examples:
 -.1
 ```
 
+### Strings
 Then strings - basically whatever sequence of characters enclosed
 in single quotes.
 
+### Identifiers
 Identifiers start with any letter,
 and can contain letters numbers or underscore.
 
+### Function call
 Function call can also be an expression.
 
+### Wildcard
 Pattern match wild card is used only in pattern matching,
 but you can use it for whatever.
 
+### Null
 Also we have NULL value which is returned from functions
 that don't have any meaningful return value, for example print.
 
+### Named tuple field acess
 You can also acess fields of your named tuple like so:
 ```
 a <- [f='test' f2=add(3 4)];
 b <- a:f2;# b is now 7
 ```
 
+### lambdas
 This language doesn't have functions, but it has lambda
 which are basically first class functions, here is an example:
 ```
@@ -227,6 +247,8 @@ so if we call our function like so:
 myFunction(3 2);# this will return 5
 ```
 
+### tuple
 Tuple basically stores whatever list of values you give it.
 
+### named tuple
 Named tuple stores these values with some names, for ease of acess.
