@@ -53,7 +53,7 @@ data Expr = ExprNumber { str::String }
 -- lambdaDef ::= '(' {id} ')' 
 -- 	'{' { command ';'} '}'
           | LambdaDef { argNames::[String], commandList::[ExprPos] }
-          | Assignment { lhs::ExprPos, rhs::ExprPos }
+          | Assignment { lhs::String, rhs::ExprPos }
   -- patternMatching ::= 'match' expr '{'
   --   {expr '->' expr ';'}
   --   '_' '->' expr ';' '}'
@@ -108,7 +108,7 @@ parseAssignment = do
   string <- skipId
   skipToken "assignment" AssignmentOperator
   rhs <- parseExpr
-  return (Assignment (ExprId string, pos) rhs, pos)
+  return (Assignment string rhs, pos)
 
 skipId :: Subparser String
 skipId = do

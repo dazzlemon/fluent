@@ -47,7 +47,7 @@ data Variable = VarNumber { varStr::String }
 evaluator' :: VarScopes -> Program -> ExceptT EvaluatorError IO VarScopes
 evaluator' variableScopes [] = return variableScopes
 evaluator' variableScopes ((first, pos):rest) = case first of
-    Assignment (ExprId lhs, pos1) rhs -> do
+    Assignment lhs rhs -> do
       rhsVar <- evalExpr variableScopes rhs
       let newKV = (lhs, rhsVar)
           currentScope = head variableScopes

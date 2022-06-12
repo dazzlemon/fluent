@@ -75,7 +75,7 @@ runCode filename isDev = do
                 putStrLn ""
                 printStackTrace code e
             printExpr n (e, pos) = case e of
-              Assignment (ExprId lhs, pos1) rhs -> do
+              Assignment lhs rhs -> do
                 putStrLn0p0 $ "assignment to `" ++ lhs ++ "`:"
                 printExpr1 rhs
               ExprId str -> putStrLn0 $ "id: " ++ str
