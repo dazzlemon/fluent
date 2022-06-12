@@ -85,6 +85,7 @@ getToken code position =
   case runStateT (foldl1 chooseSublexer [ parseNumber
                                         , parseMatchArrow
                                         , parseAssignmentOperator
+                                        , parseId
                                         ]
                  ) (position, code) of
     Right (t, (pos, rest)) -> Right (TokenInfo position t, rest)
@@ -104,14 +105,8 @@ getToken' (firstChar:code) position
     (string, _:restAfterString) ->
       returnToken (StringLiteral string) restAfterString
     (_, []) -> Left $ UnexpectedEOF "\'" -- no closing quote
-  | isAlpha firstChar = returnToken token restAfterId
   | otherwise = Left (UnknownSymbol position)
-  where (idRest, restAfterId) = span isAlphaNumOrUnderscore code
-        identifier = firstChar:idRest
-        token = case wordToToken identifier of
-          Just token -> token
-          _ -> Id identifier
-        returnToken token rest = Right (TokenInfo position token, rest)
+  where returnToken token rest = Right (TokenInfo position token, rest)
 
 isAlphaNumOrUnderscore :: Char -> Bool
 isAlphaNumOrUnderscore = liftA2 (||) isAlphaNum (== '_')
@@ -122,6 +117,15 @@ type LexerState = (Int, String)
 type Sublexer a = StateT LexerState (Either (Int, LexerError)) a
 
 throw = lift . Left
+
+parseId :: Sublexer Token
+parseId = do
+  c <- charP "id" isAlpha
+  cs <- many0p isAlphaNumOrUnderscore
+  let identifier = c:cs
+  return $ case wordToToken identifier of -- TODO: make separate parsers
+    Just token -> token
+    _ -> Id identifier
 
 parseAssignmentOperator :: Sublexer Token
 parseAssignmentOperator = do
