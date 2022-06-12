@@ -8,6 +8,7 @@ import Data.Maybe (listToMaybe, isJust)
 import Control.Applicative (liftA2)
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Class (lift)
+import Data.Foldable (traverse_)
 
 lexer :: String -> Either LexerError [TokenInfo]
 lexer code = lexer' code 0 []
@@ -80,19 +81,19 @@ wordToToken = flip lookup [ ("match", MatchKeyword)
                           ]
 
 getToken :: String -> Int -> Either LexerError (TokenInfo, String)
-getToken code position = case runStateT parseNumber (position, code) of
-  Right (t, (pos, rest)) -> Right (TokenInfo position t, rest)
-  _ -> getToken' code position
+getToken code position =
+  case runStateT (foldl1 chooseSublexer [ parseNumber
+                                        , parseMatchArrow
+                                        , parseAssignmentOperator
+                                        ]
+                 ) (position, code) of
+    Right (t, (pos, rest)) -> Right (TokenInfo position t, rest)
+    _ -> getToken' code position
 
 getToken' :: String -> Int -> Either LexerError (TokenInfo, String)
 getToken' [] position = Right (TokenInfo position TokenEOF, [])
 getToken' (firstChar:code) position
   | Just token <- charToToken firstChar = returnToken token code
-  | firstChar == '-' = case listToMaybe code of
-    Just '>' -> returnToken MatchArrow (tail code)
-    -- +1 -> is '-'; +2 is after '-'
-    Just x -> Left (UnexpectedSymbol (position + 2) ">")
-    _ -> Left $ UnexpectedEOF "'>'"
   | firstChar == '#' = case span (/= '\n') code of
     -- +2 for '\n' and '#'
     (comment, _:restAfterComment) ->
@@ -104,11 +105,6 @@ getToken' (firstChar:code) position
       returnToken (StringLiteral string) restAfterString
     (_, []) -> Left $ UnexpectedEOF "\'" -- no closing quote
   | isAlpha firstChar = returnToken token restAfterId
-  -- +1 because skip '.'
-  | firstChar == '<' = case listToMaybe code of
-    Just '-' -> returnToken AssignmentOperator (tail code)
-    Just x -> Left $ UnexpectedSymbol (position + 1) "-" -- +1 skip '<'
-    _ -> Left $ UnexpectedEOF "-"
   | otherwise = Left (UnknownSymbol position)
   where (idRest, restAfterId) = span isAlphaNumOrUnderscore code
         identifier = firstChar:idRest
@@ -126,6 +122,16 @@ type LexerState = (Int, String)
 type Sublexer a = StateT LexerState (Either (Int, LexerError)) a
 
 throw = lift . Left
+
+parseAssignmentOperator :: Sublexer Token
+parseAssignmentOperator = do
+  string "<-"
+  return AssignmentOperator
+
+parseMatchArrow :: Sublexer Token
+parseMatchArrow = do
+  string "->"
+  return MatchArrow
 
 parseNumber :: Sublexer Token
 parseNumber = do
@@ -200,7 +206,13 @@ optionalCharP pred = do
       return $ Just c
     _ -> return Nothing
 
-char c = charP ("expected " ++ [c]) (== c)
+string :: String -> Sublexer ()
+string = traverse_ char
+
+char :: Char -> Sublexer ()
+char c = do
+  _ <- charP ("expected " ++ [c]) (== c)
+  return ()
 
 charP :: String -> CharP -> Sublexer Char
 charP errmsg pred = do
