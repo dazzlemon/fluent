@@ -4,8 +4,10 @@ module Lexer where
 import Data.Data (Typeable, Data)
 import Data.Char (isAlpha, isNumber, isAlphaNum, isSpace)
 import Data.List (find)
-import Data.Maybe (listToMaybe)
+import Data.Maybe (listToMaybe, isJust)
 import Control.Applicative (liftA2)
+import Control.Monad.Trans.State
+import Control.Monad.Trans.Class (lift)
 
 lexer :: String -> Either LexerError [TokenInfo]
 lexer code = lexer' code 0 []
@@ -78,24 +80,19 @@ wordToToken = flip lookup [ ("match", MatchKeyword)
                           ]
 
 getToken :: String -> Int -> Either LexerError (TokenInfo, String)
-getToken [] position = Right (TokenInfo position TokenEOF, [])
-getToken (firstChar:code) position
+getToken code position = case runStateT parseNumber (position, code) of
+  Right (t, (pos, rest)) -> Right (TokenInfo position t, rest)
+  _ -> getToken' code position
+
+getToken' :: String -> Int -> Either LexerError (TokenInfo, String)
+getToken' [] position = Right (TokenInfo position TokenEOF, [])
+getToken' (firstChar:code) position
   | Just token <- charToToken firstChar = returnToken token code
   | firstChar == '-' = case listToMaybe code of
-    -- TODO: cleanup this branch
     Just '>' -> returnToken MatchArrow (tail code)
-    -- +1 because skipping '-'
-    Just x | isNumber x || x == '.' -> case getNumber code (position + 1) of
-      -- don't care for the position, because it starts where we said it to
-      Right (TokenInfo _ (Number positive), rest) ->
-        Right (TokenInfo position (Number ('-':positive)), rest)
-      -- after '.'
-      err@(Left _) -> err
-      -- after '-'
-      _ -> Left (UnexpectedSymbol position ("numeric" ++ suffix))
     -- +1 -> is '-'; +2 is after '-'
-    Just x -> Left (UnexpectedSymbol (position + 2) ("numeric" ++ suffix))
-    _ -> Left $ UnexpectedEOF "numeric or '>'"
+    Just x -> Left (UnexpectedSymbol (position + 2) ">")
+    _ -> Left $ UnexpectedEOF "'>'"
   | firstChar == '#' = case span (/= '\n') code of
     -- +2 for '\n' and '#'
     (comment, _:restAfterComment) ->
@@ -106,7 +103,6 @@ getToken (firstChar:code) position
     (string, _:restAfterString) ->
       returnToken (StringLiteral string) restAfterString
     (_, []) -> Left $ UnexpectedEOF "\'" -- no closing quote
-  | isNumber firstChar || firstChar == '.' = getNumber (firstChar:code) position
   | isAlpha firstChar = returnToken token restAfterId
   -- +1 because skip '.'
   | firstChar == '<' = case listToMaybe code of
@@ -120,21 +116,99 @@ getToken (firstChar:code) position
           Just token -> token
           _ -> Id identifier
         returnToken token rest = Right (TokenInfo position token, rest)
-        suffix = case listToMaybe code of
-          Just '.' -> ""
-          _ -> " or '>'"
-
--- only accepts positive numbers in formats like: 1, 1.2, .2
-getNumber :: String -> Int -> Either LexerError (TokenInfo, String)
-getNumber code position = case afterWhole of
-  "." -> Left $ UnexpectedEOF "numeric"
-  '.':_ -> if null fraction
-    then Left (UnexpectedSymbol (position + length whole + 1) "numeric")
-    else Right (TokenInfo position (Number (whole ++ "." ++ fraction)), afterFraction)
-  _ -> Right (TokenInfo position (Number whole), afterWhole)
-  where (whole, afterWhole) = span isNumber code
-        (fraction, afterFraction) = span isNumber
-                                  $ drop 1 afterWhole -- drop '.'
 
 isAlphaNumOrUnderscore :: Char -> Bool
 isAlphaNumOrUnderscore = liftA2 (||) isAlphaNum (== '_')
+
+-- new
+
+type LexerState = (Int, String)
+type Sublexer a = StateT LexerState (Either (Int, LexerError)) a
+
+throw = lift . Left
+
+parseNumber :: Sublexer Token
+parseNumber = do
+  isNegative <- optionalChar '-'
+  let mbMinus = if isNegative
+        then "-"
+        else ""
+      uintStr = many1p isNumber
+      uint = do
+        str <- uintStr
+        return (Number (mbMinus ++ str))
+      decimal = do
+        lhs <- many0p isNumber
+        let lhs' = if null lhs then "0"
+                               else lhs
+        char '.'
+        rhs <- uintStr
+        return (Number (mbMinus ++ lhs' ++ "." ++ rhs))
+  chooseSublexer uint decimal
+
+chooseSublexer :: Sublexer a -> Sublexer a -> Sublexer a
+chooseSublexer p1 p2 = do
+  state <- get
+  let r1 = runStateT p1 state
+  let r2 = runStateT p2 state
+  case (r1, r2) of
+    (Left l1, Left l2) -> throwFurthest l1 l2
+    (Right g1, Right g2) -> returnFurthest g1 g2
+    (Left l, Right g) -> returnOrThrowFurthest g l
+    (Right g, Left l) -> returnOrThrowFurthest g l
+  where throwFurthest (p1, e1) (p2, e2) = throw $ if p1 >= p2
+          then (p1, e1)
+          else (p2, e2)
+        return' (a, (d, t)) = do
+          put (d, t)
+          return a
+        returnFurthest (a1, (d1, t1)) (a2, (d2, t2)) = return' $ if d1 >= d2
+          then (a1, (d1, t1))
+          else (a2, (d2, t2))
+        returnOrThrowFurthest (a, (d, t)) (p, e) = if d >= p
+          then return' (a, (d, t))
+          else throw (p, e)
+
+type CharP = (Char -> Bool)
+
+many1p :: CharP -> Sublexer String
+many1p pred = do
+  c <- charP "many1p" pred
+  cs <- many0p pred
+  return (c:cs)
+
+many0p :: CharP -> Sublexer String
+many0p pred = do
+  mbC <- optionalCharP pred
+  case mbC of
+    Just c -> do
+      cs <- many0p pred
+      return (c:cs)
+    _ -> return ""
+
+optionalChar :: Char -> Sublexer Bool
+optionalChar c = do
+  mbC <- optionalCharP (== c)
+  return $ isJust mbC
+
+optionalCharP :: CharP -> Sublexer (Maybe Char)
+optionalCharP pred = do
+  (pos, str) <- get
+  case listToMaybe str of
+    Just c | pred c -> do
+      put (pos + 1, tail str)
+      return $ Just c
+    _ -> return Nothing
+
+char c = charP ("expected " ++ [c]) (== c)
+
+charP :: String -> CharP -> Sublexer Char
+charP errmsg pred = do
+  (pos, str) <- get
+  case listToMaybe str of
+    Just c -> if pred c
+      then do
+        put (pos + 1, tail str)
+        return c
+      else throw (pos, UnexpectedSymbol pos errmsg)
+    _ -> throw (pos, UnexpectedEOF errmsg)

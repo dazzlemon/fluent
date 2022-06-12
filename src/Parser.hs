@@ -1,7 +1,25 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 module Parser where
 
-import Lexer
+import Lexer (Token( Id
+                   , Number
+                   , StringLiteral
+                   , WildCard
+                   , Null
+                   , Semicolon
+                   , AssignmentOperator
+                   , ParenthesisLeft
+                   , ParenthesisRight
+                   , MatchKeyword
+                   , MatchArrow
+                   , BraceLeft
+                   , BraceRight
+                   , BracketLeft
+                   , BracketRight
+                   , NamedTuppleAccessOperator
+                   , NamedTuppleBindingOperator
+                   )
+             )
 import Data.List (maximumBy, minimumBy)
 import Data.Either (partitionEithers)
 import Data.Function (on)

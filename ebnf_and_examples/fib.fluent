@@ -40,3 +40,5 @@ print('What`s your name?');
 name <- read();
 print('Hello');
 print(name);
+
+print(add(1.6 .1));
