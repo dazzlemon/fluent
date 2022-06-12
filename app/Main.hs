@@ -80,10 +80,10 @@ runCode filename isDev = do
                 printExpr1 rhs
               ExprId str -> putStrLn0 $ "id: " ++ str
               ExprNumber str -> putStrLn0 $ "number: " ++ str
-              FunctionCall (ExprId fname, pos1) args -> do
+              FunctionCall fname args -> do
                 putStrLn0p0 $ "function call `" ++ fname ++ "`, args:"
                 mapM_ printExpr1 args
-              NamedTuppleAccess (ExprId lhs, _) (ExprId rhs, _) -> do
+              NamedTuppleAccess lhs rhs -> do
                 putStrLn0p0 $ "named tuple acess `" ++ lhs ++ ":" ++ rhs ++ "`"
               Tuple fields -> do
                 putStrLn0 "tuple:"
@@ -93,7 +93,7 @@ runCode filename isDev = do
                 mapM_ (printNamedTupleField (n + 1)) fields
               LambdaDef args body -> do
                 putStrLn0 "lambda:"
-                putStrLn1 $ "args: " ++ show (map (str . fst) args)
+                putStrLn1 $ "args: " ++ show args
                 putStrLn1 "body:"
                 mapM_ printExpr2 body
               PatternMatching switch cases defaultCase -> do
@@ -114,8 +114,8 @@ runCode filename isDev = do
                     withPos pos s = show pos ++ " | " ++ s
                     putStrLn0p pos s = putStrLn0 $ withPos pos s
                     putStrLn0p0 = putStrLn0p pos
-                    printNamedTupleField n ((ExprId lhs, pos1), rhs) = do
-                      putStrLn0 $ withPos pos1 $ "field `" ++ lhs ++ "`:"
+                    printNamedTupleField n (lhs, rhs) = do
+                      putStrLn0 $ "field `" ++ lhs ++ "`:"
                       printExpr (n + 1) rhs
                     printCase n (lhs, rhs) = do
                       putStrLn0 "case:"

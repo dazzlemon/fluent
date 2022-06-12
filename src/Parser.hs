@@ -42,17 +42,17 @@ data Expr = ExprNumber { str::String }
           | ExprId { str::String }
 --        | functionCall
   -- functionCall ::= id '(' {expr} ')'
-          | FunctionCall { fname::ExprPos, args::[ExprPos] }
+          | FunctionCall { fname::String, args::[ExprPos] }
 --        | '_'
           | WildCardExpr
 --        | "NULL"
           | NullExpr
 --        | namedTupleAcess
-          | NamedTuppleAccess { tupleName::ExprPos, fieldName::ExprPos }
+          | NamedTuppleAccess { tupleName::String, fieldName::String }
 --        | lambdaDef
 -- lambdaDef ::= '(' {id} ')' 
 -- 	'{' { command ';'} '}'
-          | LambdaDef { argNames::[ExprPos], commandList::[ExprPos] }
+          | LambdaDef { argNames::[String], commandList::[ExprPos] }
           | Assignment { lhs::ExprPos, rhs::ExprPos }
   -- patternMatching ::= 'match' expr '{'
   --   {expr '->' expr ';'}
@@ -65,8 +65,7 @@ data Expr = ExprNumber { str::String }
           | Tuple { values::[ExprPos] }
 -- namedTupleField ::= id '=' expr
 -- namedTuple ::= '[' {namedTupleField} ']'
-          | NamedTuple { keyValuePairs::[(ExprPos, ExprPos)] }
-          | Empty -- kinda like TokenEOF
+          | NamedTuple { keyValuePairs::[(String, ExprPos)] }
           deriving (Show, Data, Eq)
 
 newtype ParserError = ParserError String deriving (Show, Data, Eq)
@@ -130,7 +129,7 @@ parseFunctionCall = do
   strId <- skipId
   skipToken "functionCall" ParenthesisLeft
   args <- parseFunctionArgs
-  return (FunctionCall (ExprId strId, pos) args, pos)
+  return (FunctionCall strId args, pos)
 
 parseFunctionArgs :: Subparser [ExprPos]
 parseFunctionArgs = parseFunctionArgs' []
@@ -233,9 +232,8 @@ parseNamedTupleAcess = do
   (pos, _) <- get
   lhs <- skipId
   skipToken "named tuple acess" NamedTuppleAccessOperator
-  (pos2, _) <- get
   rhs <- skipId
-  return (NamedTuppleAccess (ExprId lhs, pos) (ExprId rhs, pos2), pos)
+  return (NamedTuppleAccess lhs rhs, pos)
 
 -- lambdaDef ::= '(' {id} ')' 
 -- 	'{' { command ';'} '}'
@@ -248,7 +246,7 @@ parseLambdaDef = do
   body <- parseLambdaBody
   return (LambdaDef args body, pos)
 
-parseLambdaArgs :: Subparser [ExprPos]
+parseLambdaArgs :: Subparser [String]
 parseLambdaArgs = parseLambdaArgs' []
 
 chooseSubparser :: Subparser a -> Subparser a -> Subparser a
@@ -274,7 +272,7 @@ chooseSubparser p1 p2 = do
           then return' (a, (d, t))
           else throw (p, e)
 
-parseLambdaArgs' :: [ExprPos] -> Subparser [ExprPos]
+parseLambdaArgs' :: [String] -> Subparser [String]
 parseLambdaArgs' args = chooseSubparser end continue
   where end = do
           skipToken "lambda args end" ParenthesisRight
@@ -282,7 +280,7 @@ parseLambdaArgs' args = chooseSubparser end continue
         continue = do
           (pos, _) <- get
           arg <- skipId
-          parseLambdaArgs' (args ++ [(ExprId arg, pos)])
+          parseLambdaArgs' (args ++ [arg])
 
 parseLambdaBody :: Subparser [ExprPos]
 parseLambdaBody = parseLambdaBody' []
@@ -306,10 +304,10 @@ parseNamedTuple = do
   fields <- parseNamedTupleFields
   return (NamedTuple fields, pos)
 
-parseNamedTupleFields :: Subparser [(ExprPos, ExprPos)]
+parseNamedTupleFields :: Subparser [(String, ExprPos)]
 parseNamedTupleFields = parseNamedTupleFields' []
 
-parseNamedTupleFields' :: [(ExprPos, ExprPos)] -> Subparser [(ExprPos, ExprPos)]
+parseNamedTupleFields' :: [(String, ExprPos)] -> Subparser [(String, ExprPos)]
 parseNamedTupleFields' fields = chooseSubparser end continue
   where end = do
           skipToken "tuple end" BracketRight
@@ -318,13 +316,13 @@ parseNamedTupleFields' fields = chooseSubparser end continue
           (lhs, rhs) <- parseNamedTupleField
           parseNamedTupleFields' (fields ++ [(lhs, rhs)])
 
-parseNamedTupleField :: Subparser (ExprPos, ExprPos)
+parseNamedTupleField :: Subparser (String, ExprPos)
 parseNamedTupleField = do
   (pos, _) <- get
   lhs <- skipId
   skipToken "named tuple field" NamedTuppleBindingOperator
   rhs <- parseExpr
-  return ((ExprId lhs, pos), rhs)
+  return (lhs, rhs)
 
 -- tuple ::= '[' {expr} ']'
 parseTuple :: Subparser ExprPos

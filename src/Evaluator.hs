@@ -136,9 +136,8 @@ evalExpr variableScopes (ExprId str, pos) =
     Just var -> return var
     Nothing -> throwInitial pos $ "`" ++ str ++ "` is not initialized" 
 evalExpr _ (LambdaDef argNames commandList, pos) =
-  return $ VarFunction argNames' commandList
-  where argNames' = map (str . fst) argNames
-evalExpr variableScopes (FunctionCall (ExprId fname, _) args, pos) = 
+  return $ VarFunction argNames commandList
+evalExpr variableScopes (FunctionCall fname args, pos) = 
   case findVarById fname variableScopes of
     Just (VarFunction argNames body) -> if length argNames /= length args
       then expectedNArgs (length argNames) (length args)
