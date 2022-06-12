@@ -83,9 +83,9 @@ wordToToken = flip lookup [ ("match", MatchKeyword)
 getToken :: String -> Int -> Either LexerError (TokenInfo, String)
 getToken code position =
   case runStateT (foldl1 chooseSublexer [ parseNumber
-                                        , parseMatchArrow
-                                        , parseAssignmentOperator
                                         , parseId
+                                        , stringToken "->" MatchArrow
+                                        , stringToken "<-" AssignmentOperator
                                         ]
                  ) (position, code) of
     Right (t, (pos, rest)) -> Right (TokenInfo position t, rest)
@@ -127,15 +127,10 @@ parseId = do
     Just token -> token
     _ -> Id identifier
 
-parseAssignmentOperator :: Sublexer Token
-parseAssignmentOperator = do
-  string "<-"
-  return AssignmentOperator
-
-parseMatchArrow :: Sublexer Token
-parseMatchArrow = do
-  string "->"
-  return MatchArrow
+stringToken :: String -> Token -> Sublexer Token
+stringToken str tok = do
+  string str
+  return tok
 
 parseNumber :: Sublexer Token
 parseNumber = do
