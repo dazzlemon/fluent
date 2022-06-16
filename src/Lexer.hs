@@ -50,24 +50,6 @@ data LexerError = UnknownSymbol
                 | UnexpectedEOF    { expected::String }
                 deriving (Show, Data, Eq)
 
-charToToken :: Char -> Maybe Token
-charToToken = flip lookup [ ('(', ParenthesisLeft)
-                          , (')', ParenthesisRight)
-                          , ('{', BraceLeft)
-                          , ('}', BraceRight)
-                          , ('[', BracketLeft)
-                          , (']', BracketRight)
-                          , (';', Semicolon)
-                          , ('_', WildCard)
-                          , (':', NamedTuppleAccessOperator)
-                          , ('=', NamedTuppleBindingOperator)
-                          ]
-
-wordToToken :: String -> Maybe Token
-wordToToken = flip lookup [ ("match", MatchKeyword)
-                          , ("NULL", Null)
-                          ]
-
 getToken :: Sublexer TokenInfo
 getToken = do
   (pos, tokens) <- get
@@ -76,11 +58,22 @@ getToken = do
     else do
       manySublexer0 skipNoop
       token <- foldl1 chooseSublexer [ parseNumber
+                                     , stringToken "match" MatchKeyword
+                                     , stringToken "NULL" Null
                                      , parseId
                                      , stringToken "->" MatchArrow
                                      , stringToken "<-" AssignmentOperator
                                      , parseString
-                                     , charToken
+                                     , charToken '(' ParenthesisLeft
+                                     , charToken ')' ParenthesisRight
+                                     , charToken '{' BraceLeft
+                                     , charToken '}' BraceRight
+                                     , charToken '[' BracketLeft
+                                     , charToken ']' BracketRight
+                                     , charToken ';' Semicolon
+                                     , charToken '_' WildCard
+                                     , charToken ':' NamedTuppleAccessOperator
+                                     , charToken '=' NamedTuppleBindingOperator
                                      ]
       (pos, _) <- get
       return $ TokenInfo pos token
@@ -92,8 +85,10 @@ parseString = do
   char '\''
   return (StringLiteral innerString)
 
-charToken :: Sublexer Token
-charToken = charM "expected single char token" charToToken
+charToken :: Char -> Token -> Sublexer Token
+charToken c t = do
+  char c
+  return t
 
 skipNoop :: Sublexer ()
 skipNoop = chooseSublexer skipComment skipWhitespace
@@ -119,10 +114,7 @@ parseId :: Sublexer Token
 parseId = do
   c <- charP "id" isAlpha
   cs <- many0p isAlphaNumOrUnderscore
-  let identifier = c:cs
-  return $ case wordToToken identifier of -- TODO: make separate parsers
-    Just token -> token
-    _ -> Id identifier
+  return $ Id (c:cs)
 
 stringToken :: String -> Token -> Sublexer Token
 stringToken str tok = do
