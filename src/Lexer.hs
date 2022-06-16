@@ -9,6 +9,7 @@ import Control.Applicative (liftA2)
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Class (lift)
 import Data.Foldable (traverse_)
+import Control.Monad (void, unless)
 
 lexer :: String -> Either LexerError [TokenInfo]
 lexer code = lexer' code 0 []
@@ -81,32 +82,63 @@ wordToToken = flip lookup [ ("match", MatchKeyword)
                           ]
 
 getToken :: String -> Int -> Either LexerError (TokenInfo, String)
-getToken code position =
-  case runStateT (foldl1 chooseSublexer [ parseNumber
-                                        , parseId
-                                        , stringToken "->" MatchArrow
-                                        , stringToken "<-" AssignmentOperator
-                                        ]
-                 ) (position, code) of
+getToken code position = case runStateT getToken' state of
     Right (t, (pos, rest)) -> Right (TokenInfo position t, rest)
-    _ -> getToken' code position
+    Left (_, l) -> Left l
+  where state = (position, code)
 
-getToken' :: String -> Int -> Either LexerError (TokenInfo, String)
-getToken' [] position = Right (TokenInfo position TokenEOF, [])
-getToken' (firstChar:code) position
-  | Just token <- charToToken firstChar = returnToken token code
-  | firstChar == '#' = case span (/= '\n') code of
-    -- +2 for '\n' and '#'
-    (comment, _:restAfterComment) ->
-      getToken restAfterComment (position + length comment + 2)
-    (_, []) -> returnToken TokenEOF []
-  | isSpace firstChar = getToken code (position + 1) -- +1 -> skip char
-  | firstChar == '\'' = case span (/= '\'') code of
-    (string, _:restAfterString) ->
-      returnToken (StringLiteral string) restAfterString
-    (_, []) -> Left $ UnexpectedEOF "\'" -- no closing quote
-  | otherwise = Left (UnknownSymbol position)
-  where returnToken token rest = Right (TokenInfo position token, rest)
+getToken' :: Sublexer Token
+getToken' = do
+  (pos, tokens) <- get
+  if null tokens
+    then return TokenEOF
+    else do
+      manySublexer0 skipNoop
+      foldl1 chooseSublexer [ parseNumber
+                            , parseId
+                            , stringToken "->" MatchArrow
+                            , stringToken "<-" AssignmentOperator
+                            , parseString
+                            , charToken
+                            ]
+
+parseString :: Sublexer Token
+parseString = do
+  char '\''
+  innerString <- many0p (/= '\'')
+  char '\''
+  return (StringLiteral innerString)
+
+charToken :: Sublexer Token
+charToken = do
+  (pos, str) <- get
+  case listToMaybe str of
+    Just c -> case charToToken c of
+      Just t -> do
+        put (pos + 1, tail str)
+        return t
+      _ -> throw (pos, UnexpectedSymbol pos "expected single char token")
+    _ -> throw (pos, UnexpectedEOF "expected single char token")
+
+skipNoop :: Sublexer ()
+skipNoop = chooseSublexer skipComment skipWhitespace
+
+skipComment :: Sublexer ()
+skipComment = do
+  char '#'
+  skipUntilNlOrEof
+
+skipWhitespace :: Sublexer ()
+skipWhitespace = void $ charP "skipWhitespace" isSpace
+
+skipUntilNlOrEof :: Sublexer ()
+skipUntilNlOrEof = do
+  (pos, tokens) <- get
+  case listToMaybe tokens of
+    Just x -> do
+      put (pos + 1, tail tokens)
+      unless (x == '\n') skipUntilNlOrEof
+    Nothing -> return ()
 
 isAlphaNumOrUnderscore :: Char -> Bool
 isAlphaNumOrUnderscore = liftA2 (||) isAlphaNum (== '_')
@@ -173,6 +205,33 @@ chooseSublexer p1 p2 = do
         returnOrThrowFurthest (a, (d, t)) (p, e) = if d >= p
           then return' (a, (d, t))
           else throw (p, e)
+
+optionalSublexer_ :: Sublexer a -> Sublexer ()
+optionalSublexer_ = void . optionalSublexer
+
+optionalSublexerB :: Sublexer a -> Sublexer Bool
+optionalSublexerB = (isJust <$>) . optionalSublexer
+
+optionalSublexer :: Sublexer a -> Sublexer (Maybe a)
+optionalSublexer subl = do
+  state <- get
+  let res = runStateT subl state
+  case res of
+    Left _ -> return Nothing
+    Right (res', state') -> do
+      put state'
+      return $ Just res'
+
+manySublexer0 :: Sublexer a -> Sublexer [a]
+manySublexer0 subl = do
+  state <- get
+  let res = runStateT subl state
+  case res of
+    Right (r, state') -> do
+      put state'
+      rs <- manySublexer0 subl
+      return (r:rs)
+    _ -> return []
 
 type CharP = (Char -> Bool)
 
