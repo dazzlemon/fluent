@@ -12,27 +12,16 @@ import Data.Foldable (traverse_)
 import Control.Monad (void, unless)
 
 lexer :: String -> Either LexerError [TokenInfo]
-lexer code = lexer' code 0 []
+lexer code = lexer' (0, code) []
 
-lexer' :: String -> Int -> [TokenInfo] -> Either LexerError [TokenInfo]
-lexer' [] _ tokens = Right tokens
-lexer' code position tokens = case runStateT getToken (position, code) of
+lexer' :: LexerState -> [TokenInfo] -> Either LexerError [TokenInfo]
+lexer' (_, []) tokens = Right tokens
+lexer' state@(position, _) tokens = case runStateT getToken state of
   -- repeat until TokenEOF or err
-  Right (token, (position', code')) -> case token of
+  Right (token, state') -> case token of
     TokenEOF -> Right tokens
-    _ -> lexer' code' position' (tokens ++ [TokenInfo position token])
+    _ -> lexer' state' (tokens ++ [TokenInfo position token])
   Left (_, err) -> Left err
-
-tokenLength :: Token -> Int
-tokenLength tokenNumber = case tokenNumber of
-  Number number -> length number
-  StringLiteral string -> length string + 2 -- +2 for quotes
-  Id id -> length id
-  AssignmentOperator -> 2
-  Null -> 4
-  MatchKeyword -> 5
-  MatchArrow -> 2
-  _ -> 1
 
 data Token = Number { tokenString::String } -- 125; 123.45; -1; -12.3; .1; -.23
            -- any sequence of characters between single quotes(')
