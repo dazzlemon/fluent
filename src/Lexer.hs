@@ -229,18 +229,12 @@ char c = do
   _ <- charP ("expected " ++ [c]) (== c)
   return ()
 
-charM :: String -> (Char -> Maybe a) -> Sublexer a
-charM errmsg mapper = do
+charP errmsg pred = do
   (pos, str) <- get
   case listToMaybe str of
-    Just c -> case mapper c of
-      Just t -> do
+    Just c -> if pred c
+      then do
         put (pos + 1, tail str)
-        return t
-      _ -> throw (pos, UnexpectedSymbol errmsg)
+        return c
+      else throw (pos, UnexpectedSymbol errmsg)
     _ -> throw (pos, UnexpectedEOF errmsg)
-
-charP :: String -> CharP -> Sublexer Char
-charP errmsg pred = charM errmsg predM
-  where predM a = if pred a then Just a
-                            else Nothing
