@@ -101,19 +101,11 @@ skipNoop = chooseSublexer skipComment skipWhitespace
 skipComment :: Sublexer ()
 skipComment = do
   char '#'
-  skipUntilEofOrP (== '\n')
+  many0p (/= '\n')
+  return ()
 
 skipWhitespace :: Sublexer ()
 skipWhitespace = void $ charP "skipWhitespace" isSpace
-
-skipUntilEofOrP :: CharP -> Sublexer ()
-skipUntilEofOrP charP = do
-  (pos, tokens) <- get
-  case listToMaybe tokens of
-    Just x -> do
-      put (pos + 1, tail tokens)
-      unless (charP x) (skipUntilEofOrP charP)
-    Nothing -> return ()
 
 isAlphaNumOrUnderscore :: Char -> Bool
 isAlphaNumOrUnderscore = liftA2 (||) isAlphaNum (== '_')
