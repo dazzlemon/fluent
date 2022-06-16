@@ -36,11 +36,11 @@ runCode filename isDev = do
   let code = unpack (replace (pack "\t") (pack "    ") (pack code'))
   -- code <- getContents
   case lexer code of
-    Left err -> do
+    Left (errPos, err) -> do
       putStrLn $ "Error: " ++ constrString
       -- UnexpectedEOF only happens at the end of file))
       when (constrString /= "UnexpectedEOF") $
-        putStr $ showErr code (errorPosition err)
+        putStr $ showErr code errPos
       when (constrString == "UnexpectedSymbol") $
         putStrLn $ expected err
       when (constrString == "UnexpectedEOF") $

@@ -11,17 +11,17 @@ import Control.Monad.Trans.Class (lift)
 import Data.Foldable (traverse_)
 import Control.Monad (void, unless)
 
-lexer :: String -> Either LexerError [TokenInfo]
-lexer code = lexer' (0, code) []
+lexer :: String -> Either (Int, LexerError) [TokenInfo]
+lexer code = evalStateT lexer' (0, code)
 
-lexer' :: LexerState -> [TokenInfo] -> Either LexerError [TokenInfo]
-lexer' (_, []) tokens = Right tokens
-lexer' state@(position, _) tokens = case runStateT getToken state of
-  -- repeat until TokenEOF or err
-  Right (token, state') -> case token of
-    TokenEOF -> Right tokens
-    _ -> lexer' state' (tokens ++ [TokenInfo position token])
-  Left (_, err) -> Left err
+lexer' :: Sublexer [TokenInfo]
+lexer' = do
+  res <- manySublexer0 getToken
+  state <- get
+  let test = runStateT getToken state
+  case test of
+    Left (_, UnexpectedEOF _) -> return res
+    Left l -> throw l
 
 data Token = Number { tokenString::String } -- 125; 123.45; -1; -12.3; .1; -.23
            -- any sequence of characters between single quotes(')
@@ -42,13 +42,11 @@ data Token = Number { tokenString::String } -- 125; 123.45; -1; -12.3; .1; -.23
            | MatchArrow                 -- '->'
            | NamedTuppleAccessOperator  -- ':'
            | NamedTuppleBindingOperator -- '='
-           | TokenEOF
            deriving (Show, Data, Eq)
 
 data TokenInfo = TokenInfo { position::Int, token::Token } deriving (Eq, Show)
-data LexerError = UnknownSymbol    { errorPosition::Int }
-                | UnexpectedSymbol { errorPosition::Int
-                                   , expected::String }
+data LexerError = UnknownSymbol
+                | UnexpectedSymbol { expected::String }
                 | UnexpectedEOF    { expected::String }
                 deriving (Show, Data, Eq)
 
@@ -70,20 +68,22 @@ wordToToken = flip lookup [ ("match", MatchKeyword)
                           , ("NULL", Null)
                           ]
 
-getToken :: Sublexer Token
+getToken :: Sublexer TokenInfo
 getToken = do
   (pos, tokens) <- get
   if null tokens
-    then return TokenEOF
+    then throw (pos, UnexpectedEOF "expected token")
     else do
       manySublexer0 skipNoop
-      foldl1 chooseSublexer [ parseNumber
-                            , parseId
-                            , stringToken "->" MatchArrow
-                            , stringToken "<-" AssignmentOperator
-                            , parseString
-                            , charToken
-                            ]
+      token <- foldl1 chooseSublexer [ parseNumber
+                                     , parseId
+                                     , stringToken "->" MatchArrow
+                                     , stringToken "<-" AssignmentOperator
+                                     , parseString
+                                     , charToken
+                                     ]
+      (pos, _) <- get
+      return $ TokenInfo pos token
 
 parseString :: Sublexer Token
 parseString = do
@@ -245,7 +245,7 @@ charM errmsg mapper = do
       Just t -> do
         put (pos + 1, tail str)
         return t
-      _ -> throw (pos, UnexpectedSymbol pos errmsg)
+      _ -> throw (pos, UnexpectedSymbol errmsg)
     _ -> throw (pos, UnexpectedEOF errmsg)
 
 charP :: String -> CharP -> Sublexer Char
