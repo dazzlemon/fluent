@@ -93,15 +93,7 @@ parseString = do
   return (StringLiteral innerString)
 
 charToken :: Sublexer Token
-charToken = do
-  (pos, str) <- get
-  case listToMaybe str of
-    Just c -> case charToToken c of
-      Just t -> do
-        put (pos + 1, tail str)
-        return t
-      _ -> throw (pos, UnexpectedSymbol pos "expected single char token")
-    _ -> throw (pos, UnexpectedEOF "expected single char token")
+charToken = charM "expected single char token" charToToken
 
 skipNoop :: Sublexer ()
 skipNoop = chooseSublexer skipComment skipWhitespace
@@ -253,13 +245,18 @@ char c = do
   _ <- charP ("expected " ++ [c]) (== c)
   return ()
 
-charP :: String -> CharP -> Sublexer Char
-charP errmsg pred = do
+charM :: String -> (Char -> Maybe a) -> Sublexer a
+charM errmsg mapper = do
   (pos, str) <- get
   case listToMaybe str of
-    Just c -> if pred c
-      then do
+    Just c -> case mapper c of
+      Just t -> do
         put (pos + 1, tail str)
-        return c
-      else throw (pos, UnexpectedSymbol pos errmsg)
+        return t
+      _ -> throw (pos, UnexpectedSymbol pos errmsg)
     _ -> throw (pos, UnexpectedEOF errmsg)
+
+charP :: String -> CharP -> Sublexer Char
+charP errmsg pred = charM errmsg predM
+  where predM a = if pred a then Just a
+                            else Nothing
