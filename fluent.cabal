@@ -29,6 +29,7 @@ library
       Lexer
       ListPadding
       Parser
+      ParserM
       Stuff
   other-modules:
       Paths_fluent

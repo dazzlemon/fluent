@@ -1,6 +1,8 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 module Parser where
 
+import ParserM
+
 import Lexer (Token( Id
                    , Number
                    , StringLiteral
@@ -26,7 +28,6 @@ import Data.Function (on)
 import Data.Data (Typeable, Data, Constr, toConstr)
 import Data.Maybe (listToMaybe)
 import Control.Monad.Trans.State
-import Control.Monad.Trans.Class (lift)
 
 -- int represents # of token, needed for better error messages in Evaluator.hs
 type ExprPos = (Expr, Int)
@@ -70,14 +71,7 @@ data Expr = ExprNumber { str::String }
 
 newtype ParserError = ParserError String deriving (Show, Data, Eq)
 
---                  pos  rest
-type ParserState = (Int, [Token])
-
--- type Subparser a = ParserState
--- --                      (unexpectedTokenOffset, err) (res, newState)
---               -> Either (Int,           ParserError) (a, ParserState)
-type Subparser a = StateT ParserState (Either (Int, ParserError)) a
-
+type Subparser a = ParserM Token a ParserError
 
 parser :: [Token] -> Either (Int, ParserError) Program
 parser tokens = evalStateT (parser' []) (0, tokens)
@@ -95,11 +89,10 @@ parser' commands = do
 
 -- command ::= assignment | functionCall | patternMatching
 parseCommand :: Subparser ExprPos
-parseCommand = foldl1 chooseSubparser [ parseAssignment
-                                      , parseFunctionCall
-                                      , parsePatternMatching
-                                      ]
-throw = lift . Left
+parseCommand = foldl1 chooseParserM [ parseAssignment
+                                    , parseFunctionCall
+                                    , parsePatternMatching
+                                    ]
 
 -- assignment ::= id "<-" expr
 parseAssignment :: Subparser ExprPos
@@ -135,7 +128,7 @@ parseFunctionArgs :: Subparser [ExprPos]
 parseFunctionArgs = parseFunctionArgs' []
 
 parseFunctionArgs' :: [ExprPos] -> Subparser [ExprPos]
-parseFunctionArgs' args = chooseSubparser end continue
+parseFunctionArgs' args = chooseParserM end continue
   where end = do
           skipToken "functiona call args end" ParenthesisRight
           return args
@@ -159,7 +152,7 @@ parseMatchBody :: Subparser ([(ExprPos, ExprPos)], ExprPos)
 parseMatchBody = parseMatchBody' []
 
 parseMatchBody' :: [(ExprPos, ExprPos)] -> Subparser ([(ExprPos, ExprPos)], ExprPos)
-parseMatchBody' cases = chooseSubparser end continue
+parseMatchBody' cases = chooseParserM end continue
   where end = do
           skipToken "pattern match body end" WildCard
           skipToken "pattern match body end" MatchArrow
@@ -199,13 +192,13 @@ skipToken fname token = do
 --        | namedTuple
 --        | tuple
 parseExpr :: Subparser ExprPos
-parseExpr = foldl1 chooseSubparser [ parseFunctionCall
-                                   , parseNamedTupleAcess
-                                   , parseLambdaDef
-                                   , parseNamedTuple
-                                   , parseTuple
-                                   , singleTokenExpr
-                                   ]
+parseExpr = foldl1 chooseParserM [ parseFunctionCall
+                                 , parseNamedTupleAcess
+                                 , parseLambdaDef
+                                 , parseNamedTuple
+                                 , parseTuple
+                                 , singleTokenExpr
+                                 ]
 
 singleTokenExpr :: Subparser ExprPos
 singleTokenExpr = do
@@ -249,31 +242,8 @@ parseLambdaDef = do
 parseLambdaArgs :: Subparser [String]
 parseLambdaArgs = parseLambdaArgs' []
 
-chooseSubparser :: Subparser a -> Subparser a -> Subparser a
-chooseSubparser p1 p2 = do
-  state <- get
-  let r1 = runStateT p1 state
-  let r2 = runStateT p2 state
-  case (r1, r2) of
-    (Left l1, Left l2) -> throwFurthest l1 l2
-    (Right g1, Right g2) -> returnFurthest g1 g2
-    (Left l, Right g) -> returnOrThrowFurthest g l
-    (Right g, Left l) -> returnOrThrowFurthest g l
-  where throwFurthest (p1, e1) (p2, e2) = throw $ if p1 >= p2
-          then (p1, e1)
-          else (p2, e2)
-        return' (a, (d, t)) = do
-          put (d, t)
-          return a
-        returnFurthest (a1, (d1, t1)) (a2, (d2, t2)) = return' $ if d1 >= d2
-          then (a1, (d1, t1))
-          else (a2, (d2, t2))
-        returnOrThrowFurthest (a, (d, t)) (p, e) = if d >= p
-          then return' (a, (d, t))
-          else throw (p, e)
-
 parseLambdaArgs' :: [String] -> Subparser [String]
-parseLambdaArgs' args = chooseSubparser end continue
+parseLambdaArgs' args = chooseParserM end continue
   where end = do
           skipToken "lambda args end" ParenthesisRight
           return args
@@ -286,7 +256,7 @@ parseLambdaBody :: Subparser [ExprPos]
 parseLambdaBody = parseLambdaBody' []
 
 parseLambdaBody' :: [ExprPos] -> Subparser [ExprPos]
-parseLambdaBody' commands = chooseSubparser end continue
+parseLambdaBody' commands = chooseParserM end continue
   where end = do
           skipToken "lambda body end" BraceRight
           return commands
@@ -308,7 +278,7 @@ parseNamedTupleFields :: Subparser [(String, ExprPos)]
 parseNamedTupleFields = parseNamedTupleFields' []
 
 parseNamedTupleFields' :: [(String, ExprPos)] -> Subparser [(String, ExprPos)]
-parseNamedTupleFields' fields = chooseSubparser end continue
+parseNamedTupleFields' fields = chooseParserM end continue
   where end = do
           skipToken "tuple end" BracketRight
           return fields
@@ -336,7 +306,7 @@ parseTupleFields :: Subparser [ExprPos]
 parseTupleFields = parseTupleFields' []
 
 parseTupleFields' :: [ExprPos] -> Subparser [ExprPos]
-parseTupleFields' fields = chooseSubparser end continue
+parseTupleFields' fields = chooseParserM end continue
   where end = do
           skipToken "tuple end" BracketRight
           return fields

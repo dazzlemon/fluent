@@ -11,6 +11,8 @@ import Control.Monad.Trans.Class (lift)
 import Data.Foldable (traverse_)
 import Control.Monad (void, unless)
 
+import ParserM
+
 lexer :: String -> Either (Int, LexerError) [TokenInfo]
 lexer code = evalStateT lexer' (0, code)
 
@@ -57,24 +59,24 @@ getToken = do
     then throw (pos, UnexpectedEOF "expected token")
     else do
       manySublexer0 skipNoop
-      token <- foldl1 chooseSublexer [ parseNumber
-                                     , stringToken "match" MatchKeyword
-                                     , stringToken "NULL" Null
-                                     , parseId
-                                     , stringToken "->" MatchArrow
-                                     , stringToken "<-" AssignmentOperator
-                                     , parseString
-                                     , charToken '(' ParenthesisLeft
-                                     , charToken ')' ParenthesisRight
-                                     , charToken '{' BraceLeft
-                                     , charToken '}' BraceRight
-                                     , charToken '[' BracketLeft
-                                     , charToken ']' BracketRight
-                                     , charToken ';' Semicolon
-                                     , charToken '_' WildCard
-                                     , charToken ':' NamedTuppleAccessOperator
-                                     , charToken '=' NamedTuppleBindingOperator
-                                     ]
+      token <- foldl1 chooseParserM [ parseNumber
+                                    , stringToken "match" MatchKeyword
+                                    , stringToken "NULL" Null
+                                    , parseId
+                                    , stringToken "->" MatchArrow
+                                    , stringToken "<-" AssignmentOperator
+                                    , parseString
+                                    , charToken '(' ParenthesisLeft
+                                    , charToken ')' ParenthesisRight
+                                    , charToken '{' BraceLeft
+                                    , charToken '}' BraceRight
+                                    , charToken '[' BracketLeft
+                                    , charToken ']' BracketRight
+                                    , charToken ';' Semicolon
+                                    , charToken '_' WildCard
+                                    , charToken ':' NamedTuppleAccessOperator
+                                    , charToken '=' NamedTuppleBindingOperator
+                                    ]
       (pos, _) <- get
       return $ TokenInfo pos token
 
@@ -91,7 +93,7 @@ charToken c t = do
   return t
 
 skipNoop :: Sublexer ()
-skipNoop = chooseSublexer skipComment skipWhitespace
+skipNoop = chooseParserM skipComment skipWhitespace
 
 skipComment :: Sublexer ()
 skipComment = do
@@ -105,10 +107,7 @@ skipWhitespace = void $ charP "skipWhitespace" isSpace
 isAlphaNumOrUnderscore :: Char -> Bool
 isAlphaNumOrUnderscore = liftA2 (||) isAlphaNum (== '_')
 
-type LexerState = (Int, String)
-type Sublexer a = StateT LexerState (Either (Int, LexerError)) a
-
-throw = lift . Left
+type Sublexer a = ParserM Char a LexerError
 
 parseId :: Sublexer Token
 parseId = do
@@ -138,30 +137,7 @@ parseNumber = do
         char '.'
         rhs <- uintStr
         return (Number (mbMinus ++ lhs' ++ "." ++ rhs))
-  chooseSublexer uint decimal
-
-chooseSublexer :: Sublexer a -> Sublexer a -> Sublexer a
-chooseSublexer p1 p2 = do
-  state <- get
-  let r1 = runStateT p1 state
-  let r2 = runStateT p2 state
-  case (r1, r2) of
-    (Left l1, Left l2) -> throwFurthest l1 l2
-    (Right g1, Right g2) -> returnFurthest g1 g2
-    (Left l, Right g) -> returnOrThrowFurthest g l
-    (Right g, Left l) -> returnOrThrowFurthest g l
-  where throwFurthest (p1, e1) (p2, e2) = throw $ if p1 >= p2
-          then (p1, e1)
-          else (p2, e2)
-        return' (a, (d, t)) = do
-          put (d, t)
-          return a
-        returnFurthest (a1, (d1, t1)) (a2, (d2, t2)) = return' $ if d1 >= d2
-          then (a1, (d1, t1))
-          else (a2, (d2, t2))
-        returnOrThrowFurthest (a, (d, t)) (p, e) = if d >= p
-          then return' (a, (d, t))
-          else throw (p, e)
+  chooseParserM uint decimal
 
 optionalSublexer_ :: Sublexer a -> Sublexer ()
 optionalSublexer_ = void . optionalSublexer
