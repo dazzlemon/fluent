@@ -205,6 +205,7 @@ char c = do
   _ <- charP ("expected " ++ [c]) (== c)
   return ()
 
+charP :: String -> (Char -> Bool) -> Sublexer Char
 charP errmsg pred = do
   (pos, str) <- get
   case listToMaybe str of
