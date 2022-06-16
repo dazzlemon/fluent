@@ -16,12 +16,12 @@ lexer code = lexer' code 0 []
 
 lexer' :: String -> Int -> [TokenInfo] -> Either LexerError [TokenInfo]
 lexer' [] _ tokens = Right tokens
-lexer' code position tokens = case getToken code position of
+lexer' code position tokens = case runStateT getToken (position, code) of
   -- repeat until TokenEOF or err
-  Right (tokenInfo@(TokenInfo position token), rest) -> case token of
+  Right (token, (position', code')) -> case token of
     TokenEOF -> Right tokens
-    _ -> lexer' rest (position + tokenLength token) (tokens ++ [tokenInfo])
-  Left err -> Left err
+    _ -> lexer' code' position' (tokens ++ [TokenInfo position token])
+  Left (_, err) -> Left err
 
 tokenLength :: Token -> Int
 tokenLength tokenNumber = case tokenNumber of
@@ -81,14 +81,8 @@ wordToToken = flip lookup [ ("match", MatchKeyword)
                           , ("NULL", Null)
                           ]
 
-getToken :: String -> Int -> Either LexerError (TokenInfo, String)
-getToken code position = case runStateT getToken' state of
-    Right (t, (pos, rest)) -> Right (TokenInfo position t, rest)
-    Left (_, l) -> Left l
-  where state = (position, code)
-
-getToken' :: Sublexer Token
-getToken' = do
+getToken :: Sublexer Token
+getToken = do
   (pos, tokens) <- get
   if null tokens
     then return TokenEOF
@@ -126,24 +120,22 @@ skipNoop = chooseSublexer skipComment skipWhitespace
 skipComment :: Sublexer ()
 skipComment = do
   char '#'
-  skipUntilNlOrEof
+  skipUntilEofOrP (== '\n')
 
 skipWhitespace :: Sublexer ()
 skipWhitespace = void $ charP "skipWhitespace" isSpace
 
-skipUntilNlOrEof :: Sublexer ()
-skipUntilNlOrEof = do
+skipUntilEofOrP :: CharP -> Sublexer ()
+skipUntilEofOrP charP = do
   (pos, tokens) <- get
   case listToMaybe tokens of
     Just x -> do
       put (pos + 1, tail tokens)
-      unless (x == '\n') skipUntilNlOrEof
+      unless (charP x) (skipUntilEofOrP charP)
     Nothing -> return ()
 
 isAlphaNumOrUnderscore :: Char -> Bool
 isAlphaNumOrUnderscore = liftA2 (||) isAlphaNum (== '_')
-
--- new
 
 type LexerState = (Int, String)
 type Sublexer a = StateT LexerState (Either (Int, LexerError)) a
