@@ -4,6 +4,8 @@ functional, immutable language 'fluent'.
 Currently it only supports a subset of the language,
 but it allows for some simple programs.
 
+There is also a [vscode extension](https://github.com/dazzlemon/fluent-vsc).
+
 following snippet prints first 9 numbers of fibonacci sequence:
 ```
 fib <- (n) {
@@ -59,6 +61,9 @@ fluent-exe fib.fluent
 # or you can use it with stack
 stack exec -- fluent-exe fib.fluent
 ```
+
+Or you can download latest precompiled executable
+for your system in releases tab.
 
 # Syntax
 
